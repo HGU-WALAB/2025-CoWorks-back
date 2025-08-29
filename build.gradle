@@ -47,7 +47,10 @@ dependencies {
     
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
-    
+
+    // Email template 설정을 위한 thymeleaf 라이브러리.
+    implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
 }
