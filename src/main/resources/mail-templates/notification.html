@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Notification</title>
+<!--    <link rel="stylesheet" th:href="@{/mail-templates/common-styles.css}"/>-->
+    <style th:utext="${styles}"></style>
+</head>
+<body>
+<div class="container">
+    <h2 th:text="'새로운 ' + ${notificationType} + ' 알림'">새로운 알림</h2>
+
+    <p>
+        <span class="accent" th:text="${username}">사용자</span>님께 새로운 알림이 도착했습니다.
+    </p>
+
+    <p th:text="${message}">
+        알림 내용이 여기에 표시됩니다.
+    </p>
+
+    <a th:href="${verifyLink}" class="btn">
+        📋 자세히 보기
+    </a>
+
+    <img th:src="'cid:logo'" alt="Logo" width="120" class="logo"/>
+</div>
+</body>
+</html>
