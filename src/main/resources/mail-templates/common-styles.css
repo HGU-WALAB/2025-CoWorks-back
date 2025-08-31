@@ -1,73 +1,644 @@
-body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+/* ========================================
+   EMAIL TEMPLATE STYLES - HisWork Frontend
+   이메일 템플릿용 CSS (인라인 스타일 호환)
+======================================== */
+
+/* ========================================
+   RESET & BASE STYLES
+======================================== */
+* {
     margin: 0;
-    padding: 40px 20px;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+    padding: 0;
+    box-sizing: border-box;
 }
 
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    color: #333333;
+    background-color: #b4b4b4;
+    margin: 0;
+    padding: 0;
+}
+
+/* ========================================
+   CONTAINER & LAYOUT
+======================================== */
 .container {
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
-    border-radius: 20px;
-    padding: 40px;
-    box-shadow: 0 20px 40px rgba(102, 126, 234, 0.3);
-    text-align: center;
-    max-width: 500px;
-    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 40px 20px;
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* ========================================
+   TYPOGRAPHY
+======================================== */
+h1, h2, h3, h4, h5, h6 {
+    margin-bottom: 16px;
+    font-weight: 600;
+    line-height: 1.3;
+    color: #1f2937;
+}
+
+h1 {
+    font-size: 28px;
 }
 
 h2 {
-    color: #5a4fcf;
-    font-size: 2.2em;
-    margin-bottom: 20px;
-    text-shadow: 0 2px 4px rgba(90, 79, 207, 0.2);
+    font-size: 24px;
+    color: #2563eb;
+    border-bottom: 2px solid #e5e7eb;
+    padding-bottom: 8px;
+    margin-bottom: 24px;
+}
+
+h3 {
+    font-size: 20px;
 }
 
 p {
-    color: #6b7280;
-    font-size: 1.1em;
+    margin-bottom: 16px;
     line-height: 1.6;
-    margin: 15px 0;
 }
 
+/* ========================================
+   ACCENT TEXT
+======================================== */
+.accent {
+    color: #2563eb;
+    font-weight: 600;
+    background-color: #eff6ff;
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid #dbeafe;
+}
+
+/* ========================================
+   BUTTONS
+======================================== */
 .btn {
     display: inline-block;
-    padding: 15px 30px;
-    background: linear-gradient(45deg, #8b5cf6, #a855f7);
-    color: white;
+    background-color: #2563eb;
+    color: #ffffff !important;
     text-decoration: none;
-    border-radius: 50px;
-    font-weight: 600;
-    font-size: 1.1em;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
+    padding: 12px 24px;
+    border-radius: 6px;
+    font-weight: 500;
+    font-size: 16px;
+    text-align: center;
     margin: 20px 0;
+    transition: background-color 0.2s ease;
+    border: none;
+    cursor: pointer;
 }
 
 .btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(139, 92, 246, 0.6);
-    background: linear-gradient(45deg, #7c3aed, #9333ea);
+    background-color: #1d4ed8;
 }
 
+.btn:active {
+    background-color: #1e40af;
+}
+
+.btn:focus {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+}
+
+/* ========================================
+   LOGO
+======================================== */
 .logo {
+    display: block;
+    margin: 30px auto 0;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* ========================================
+   NOTIFICATION SPECIFIC STYLES
+======================================== */
+.notification-header {
+    text-align: center;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.notification-content {
+    margin-bottom: 30px;
+}
+
+.notification-message {
+    background-color: #f9fafb;
+    border-left: 4px solid #2563eb;
+    padding: 16px;
+    margin: 20px 0;
+    border-radius: 0 6px 6px 0;
+}
+
+.notification-footer {
+    text-align: center;
     margin-top: 30px;
-    border-radius: 15px;
-    box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+    padding-top: 20px;
+    border-top: 1px solid #e5e7eb;
+    color: #6b7280;
+    font-size: 14px;
 }
 
-.accent {
-    color: #8b5cf6;
+/* ========================================
+   STATUS INDICATORS
+======================================== */
+.status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
     font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
-/* 추가 유틸리티 클래스들 */
-.text-center { text-align: center; }
-.mt-20 { margin-top: 20px; }
-.mb-20 { margin-bottom: 20px; }
-.p-20 { padding: 20px; }
+.status-success {
+    background-color: #d1fae5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+}
+
+.status-pending {
+    background-color: #dbeafe;
+    color: #1e40af;
+    border: 1px solid #93c5fd;
+}
+
+.status-warning {
+    background-color: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fcd34d;
+}
+
+.status-error {
+    background-color: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+}
+
+/* ========================================
+   ALERTS & MESSAGES
+======================================== */
+.alert {
+    padding: 16px;
+    border-radius: 6px;
+    margin: 16px 0;
+    border-left: 4px solid;
+}
+
+.alert-info {
+    background-color: #eff6ff;
+    border-color: #3b82f6;
+    color: #1e40af;
+}
+
+.alert-success {
+    background-color: #f0fdf4;
+    border-color: #22c55e;
+    color: #166534;
+}
+
+.alert-warning {
+    background-color: #fffbeb;
+    border-color: #f59e0b;
+    color: #92400e;
+}
+
+.alert-error {
+    background-color: #fef2f2;
+    border-color: #ef4444;
+    color: #991b1b;
+}
+
+/* ========================================
+   CARDS & SECTIONS
+======================================== */
+.card {
+    background-color: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 16px 0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 12px;
+    margin-bottom: 16px;
+}
+
+.card-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0;
+}
+
+.card-content {
+    color: #4b5563;
+}
+
+/* ========================================
+   LISTS
+======================================== */
+.list {
+    margin: 16px 0;
+}
+
+.list-item {
+    padding: 8px 0;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.list-item:last-child {
+    border-bottom: none;
+}
+
+.list-item-title {
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 4px;
+}
+
+.list-item-description {
+    color: #6b7280;
+    font-size: 14px;
+}
+
+/* ========================================
+   TABLES
+======================================== */
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+}
+
+.table th,
+.table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.table th {
+    background-color: #f9fafb;
+    font-weight: 600;
+    color: #374151;
+}
+
+.table tr:hover {
+    background-color: #f9fafb;
+}
+
+/* ========================================
+   FORMS
+======================================== */
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #374151;
+}
+
+.form-input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 16px;
+    transition: border-color 0.2s ease;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.form-textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+/* ========================================
+   UTILITY CLASSES
+======================================== */
+.text-center {
+    text-align: center;
+}
+
+.text-left {
+    text-align: left;
+}
+
+.text-right {
+    text-align: right;
+}
+
+.text-primary {
+    color: #2563eb;
+}
+
+.text-success {
+    color: #059669;
+}
+
+.text-warning {
+    color: #d97706;
+}
+
+.text-error {
+    color: #dc2626;
+}
+
+.text-muted {
+    color: #6b7280;
+}
+
+.bg-primary {
+    background-color: #eff6ff;
+}
+
+.bg-success {
+    background-color: #f0fdf4;
+}
+
+.bg-warning {
+    background-color: #fffbeb;
+}
+
+.bg-error {
+    background-color: #fef2f2;
+}
+
+.mt-0 { margin-top: 0; }
+.mt-1 { margin-top: 4px; }
+.mt-2 { margin-top: 8px; }
+.mt-3 { margin-top: 12px; }
+.mt-4 { margin-top: 16px; }
+.mt-5 { margin-top: 20px; }
+.mt-6 { margin-top: 24px; }
+.mt-8 { margin-top: 32px; }
+
+.mb-0 { margin-bottom: 0; }
+.mb-1 { margin-bottom: 4px; }
+.mb-2 { margin-bottom: 8px; }
+.mb-3 { margin-bottom: 12px; }
+.mb-4 { margin-bottom: 16px; }
+.mb-5 { margin-bottom: 20px; }
+.mb-6 { margin-bottom: 24px; }
+.mb-8 { margin-bottom: 32px; }
+
+.ml-0 { margin-left: 0; }
+.ml-1 { margin-left: 4px; }
+.ml-2 { margin-left: 8px; }
+.ml-3 { margin-left: 12px; }
+.ml-4 { margin-left: 16px; }
+
+.mr-0 { margin-right: 0; }
+.mr-1 { margin-right: 4px; }
+.mr-2 { margin-right: 8px; }
+.mr-3 { margin-right: 12px; }
+.mr-4 { margin-right: 16px; }
+
+.pt-0 { padding-top: 0; }
+.pt-1 { padding-top: 4px; }
+.pt-2 { padding-top: 8px; }
+.pt-3 { padding-top: 12px; }
+.pt-4 { padding-top: 16px; }
+.pt-5 { padding-top: 20px; }
+.pt-6 { padding-top: 24px; }
+.pt-8 { padding-top: 32px; }
+
+.pb-0 { padding-bottom: 0; }
+.pb-1 { padding-bottom: 4px; }
+.pb-2 { padding-bottom: 8px; }
+.pb-3 { padding-bottom: 12px; }
+.pb-4 { padding-bottom: 16px; }
+.pb-5 { padding-bottom: 20px; }
+.pb-6 { padding-bottom: 24px; }
+.pb-8 { padding-bottom: 32px; }
+
+.pl-0 { padding-left: 0; }
+.pl-1 { padding-left: 4px; }
+.pl-2 { padding-left: 8px; }
+.pl-3 { padding-left: 12px; }
+.pl-4 { padding-left: 16px; }
+
+.pr-0 { padding-right: 0; }
+.pr-1 { padding-right: 4px; }
+.pr-2 { padding-right: 8px; }
+.pr-3 { padding-right: 12px; }
+.pr-4 { padding-right: 16px; }
+
+/* ========================================
+   RESPONSIVE DESIGN
+======================================== */
+@media (max-width: 600px) {
+    .container {
+        margin: 0 auto;
+        border-radius: 8px;
+        padding: 20px 16px;
+    }
+
+    h2 {
+        font-size: 20px;
+    }
+
+    .btn {
+        width: 100%;
+        padding: 16px 24px;
+    }
+
+    .logo {
+        width: 100px;
+    }
+}
+
+@media (max-width: 480px) {
+    body {
+        font-size: 14px;
+    }
+
+    .container {
+        padding: 16px 12px;
+    }
+
+    h2 {
+        font-size: 18px;
+    }
+}
+
+/* ========================================
+   PRINT STYLES
+======================================== */
+@media print {
+    body {
+        background-color: #ffffff;
+        color: #000000;
+    }
+
+    .container {
+        box-shadow: none;
+        border: 1px solid #000000;
+    }
+
+    .btn {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        border: 1px solid #000000 !important;
+    }
+
+    .logo {
+        filter: grayscale(100%);
+    }
+}
+
+/* ========================================
+   ACCESSIBILITY
+======================================== */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+@media (prefers-contrast: custom) {
+    .btn {
+        border: 2px solid #000000;
+    }
+
+    .accent {
+        border: 2px solid #000000;
+    }
+}
+
+/* ========================================
+   EMAIL CLIENT COMPATIBILITY
+======================================== */
+/* Outlook specific fixes */
+table {
+    mso-table-lspace: 0pt;
+    mso-table-rspace: 0pt;
+}
+
+/* Gmail specific fixes */
+u + .body {
+    background-color: #ffffff;
+}
+
+/* Apple Mail specific fixes */
+@media only screen and (max-device-width: 600px) {
+    .container {
+        width: 100% !important;
+        min-width: 100% !important;
+    }
+}
+
+/* ========================================
+   CUSTOM ANIMATIONS (CSS-only)
+======================================== */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+.pulse {
+    animation: pulse 2s infinite;
+}
+
+/* ========================================
+   THEME VARIATIONS
+======================================== */
+.theme-dark {
+    background-color: #1f2937;
+    color: #f9fafb;
+}
+
+.theme-dark .container {
+    background-color: #374151;
+    color: #f9fafb;
+}
+
+.theme-dark h2 {
+    color: #60a5fa;
+}
+
+.theme-dark .accent {
+    background-color: #1e40af;
+    color: #dbeafe;
+    border-color: #3b82f6;
+}
+
+.theme-dark .btn {
+    background-color: #3b82f6;
+}
+
+.theme-dark .btn:hover {
+    background-color: #2563eb;
+}
+
+/* ========================================
+   SPECIAL NOTIFICATION TYPES
+======================================== */
+.notification-urgent {
+    border-left: 4px solid #dc2626;
+    background-color: #fef2f2;
+}
+
+.notification-urgent h2 {
+    color: #dc2626;
+}
+
+.notification-info {
+    border-left: 4px solid #2563eb;
+    background-color: #eff6ff;
+}
+
+.notification-success {
+    border-left: 4px solid #059669;
+    background-color: #f0fdf4;
+}
+
+.notification-warning {
+    border-left: 4px solid #d97706;
+    background-color: #fffbeb;
+}

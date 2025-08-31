@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CopilotDiffPersistence">
+    <option name="pendingDiffs">
+      <map>
+        <entry key="$PROJECT_DIR$/src/main/resources/mail-templates/notification.html">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="$PROJECT_DIR$/src/main/resources/mail-templates/notification.html" />
+              <option name="originalContent" value="&lt;!DOCTYPE html&gt;&#10;&lt;html xmlns:th=&quot;http://www.thymeleaf.org&quot;&gt;&#10;&lt;head&gt;&#10;    &lt;meta charset=&quot;UTF-8&quot;/&gt;&#10;    &lt;title&gt;Notification&lt;/title&gt;&#10;&lt;!--    &lt;link rel=&quot;stylesheet&quot; th:href=&quot;@{/mail-templates/common-styles.css}&quot;/&gt;--&gt;&#10;    &lt;style th:utext=&quot;${styles}&quot;&gt;&lt;/style&gt;&#10;&lt;/head&gt;&#10;&lt;body&gt;&#10;&lt;div class=&quot;container&quot;&gt;&#10;    &lt;h2 th:text=&quot;'새로운 ' + ${notificationType} + ' 알림'&quot;&gt;&lt;/h2&gt;&#10;&#10;    &lt;p&gt;&#10;        &lt;span class=&quot;accent&quot; th:text=&quot;${username}&quot;&gt;사용자&lt;/span&gt;님께 새로운 알림이 도착했습니다.&#10;    &lt;/p&gt;&#10;&#10;    &lt;p th:text=&quot;'당신에게 ' + ${message} + '에 대한 작성 알림이 도착했습니다. &amp;lt;br/&amp;gt; 해당 링크로 들어와 활동을 이어나가 주세요.'&quot;&gt;&#10;        당신에게 {message}에 대한 작성 알림이 도착했습니다.&#10;        해당 링크로 들어와 활동을 이어나가 주세요.&#10;    &lt;/p&gt;&#10;&#10;    &lt;a th:href=&quot;${verifyLink}&quot; class=&quot;btn&quot;&gt;&#10;        링크 들어오기.&#10;    &lt;/a&gt;&#10;&#10;&lt;/div&gt;&#10;&lt;/body&gt;&#10;&lt;/html&gt;&#10;" />
+              <option name="updatedContent" value="&lt;!DOCTYPE html&gt;&#10;&lt;html xmlns:th=&quot;http://www.thymeleaf.org&quot;&gt;&#10;&lt;head&gt;&#10;    &lt;meta charset=&quot;UTF-8&quot;/&gt;&#10;    &lt;title&gt;Notification&lt;/title&gt;&#10;&lt;!--    &lt;link rel=&quot;stylesheet&quot; th:href=&quot;@{/mail-templates/common-styles.css}&quot;/&gt;--&gt;&#10;    &lt;style th:utext=&quot;${styles}&quot;&gt;&lt;/style&gt;&#10;&lt;/head&gt;&#10;&lt;body&gt;&#10;&lt;div class=&quot;container&quot;&gt;&#10;    &lt;h2 th:text=&quot;'새로운 ' + ${notificationType} + ' 알림'&quot;&gt;&lt;/h2&gt;&#10;&#10;    &lt;p&gt;&#10;        &lt;span class=&quot;accent&quot; th:text=&quot;${username}&quot;&gt;사용자&lt;/span&gt;님께 새로운 알림이 도착했습니다.&#10;    &lt;/p&gt;&#10;&#10;    &lt;p th:text=&quot;'당신에게 ' + ${message} + '에 대한 작성 알림이 도착했습니다. &amp;lt;br/&amp;gt; 해당 링크로 들어와 활동을 이어나가 주세요.'&quot;&gt;&#10;        당신에게 {message}에 대한 작성 알림이 도착했습니다.&#10;        해당 링크로 들어와 활동을 이어나가 주세요.&#10;    &lt;/p&gt;&#10;&#10;    &lt;a th:href=&quot;${verifyLink}&quot; class=&quot;btn&quot;&gt;&#10;        링크 들어오기.&#10;    &lt;/a&gt;&#10;&#10;&lt;/div&gt;&#10;&lt;/body&gt;&#10;&lt;/html&gt;" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+</project>

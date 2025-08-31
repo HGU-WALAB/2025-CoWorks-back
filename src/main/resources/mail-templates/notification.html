@@ -1,28 +1,122 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html>
 <head>
-    <meta charset="UTF-8"/>
+    <meta charset="UTF-8" />
     <title>Notification</title>
-<!--    <link rel="stylesheet" th:href="@{/mail-templates/common-styles.css}"/>-->
-    <style th:utext="${styles}"></style>
+    <!-- 이메일 클라이언트 호환을 위해 외부/내부 CSS 제거, 인라인만 사용 -->
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="x-apple-disable-message-reformatting">
+    <meta name="format-detection" content="telephone=no,address=no,email=no,date=no,url=no">
+    <meta name="color-scheme" content="light only">
 </head>
-<body>
-<div class="container">
-    <h2 th:text="'새로운 ' + ${notificationType} + ' 알림'">새로운 알림</h2>
+<body style="margin:0;padding:0;background-color:#f8f9fa;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
+<!-- 전체 너비 테이블 -->
+<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;background-color:#f8f9fa;">
+    <tr>
+        <td align="center" style="padding:24px;">
+            <!-- 컨테이너 -->
+            <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="600" style="width:600px;max-width:600px;background:#ffffff;border-radius:15px;border:1px solid #e5e7eb;">
+                <tr>
+                    <td style="padding:32px 24px 8px 24px;">
+                        <!-- 헤더 -->
+                        <h2 th:text="'새로운 ' + ${notificationType} + ' 알림'"
+                            style="margin:0 0 16px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:24px;line-height:1.3;font-weight:700;color:#2563eb;border-bottom:2px solid #e5e7eb;padding-bottom:8px;">
+                            새로운 알림
+                        </h2>
 
-    <p>
-        <span class="accent" th:text="${username}">사용자</span>님께 새로운 알림이 도착했습니다.
-    </p>
+                        <p style="margin:0 0 16px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:16px;line-height:1.6;color:#1f2937;">
+                <span th:text="${username}"
+                      style="display:inline-block;margin-right:4px;padding:2px 8px;border-radius:4px;border:1px solid #dbeafe;background:#eff6ff;color:#2563eb;font-weight:600;">
+                  사용자
+                </span>님께 새로운 알림이 도착했습니다.
+                        </p>
 
-    <p th:text="${message}">
-        알림 내용이 여기에 표시됩니다.
-    </p>
+                        <!-- 메시지 박스 -->
+                        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%"
+                               style="border-collapse:collapse;background:#f9fafb;border-left:4px solid #2563eb;border-radius:6px;margin:16px 0;">
+                            <tr>
+                                <td style="padding:16px 16px 16px 16px;">
+                                    <div th:utext="'당신에게 ' + ${message} + '에 대한 작성 알림이 도착했습니다.<br/>해당 링크로 들어와 활동을 이어나가 주세요.'"
+                                         style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:16px;line-height:1.6;color:#374151;">
+                                        당신에게 {message}에 대한 작성 알림이 도착했습니다.<br/>해당 링크로 들어와 활동을 이어나가 주세요.
+                                    </div>
+                                </td>
+                            </tr>
+                        </table>
 
-    <a th:href="${verifyLink}" class="btn">
-        📋 자세히 보기
-    </a>
+                        <!-- 버튼 (테이블 버튼: Outlook 호환) -->
+                        <table role="presentation" border="0" cellpadding="0" cellspacing="0" align="center" style="margin:24px auto 8px auto;">
+                            <tr>
+                                <td align="center" bgcolor="#2563eb" style="border-radius:8px;">
+                                    <a th:href="${verifyLink}"
+                                       style="display:inline-block;padding:14px 28px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:16px;line-height:1.2;color:#ffffff;text-decoration:none;font-weight:600;border-radius:8px;background-color:#2563eb;">
+                                        링크 들어오기
+                                    </a>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
 
-    <img th:src="'cid:logo'" alt="Logo" width="120" class="logo"/>
-</div>
+                <!-- 추가 작업 안내 카드 -->
+                <tr>
+                    <td style="padding:8px 24px 0 24px;">
+                        <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:8px;">
+                            <tr>
+                                <td style="padding:16px 16px;border-bottom:1px solid #e5e7eb;">
+                                    <h3 style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:18px;font-weight:700;color:#1f2937;">
+                                        추가 작업 안내
+                                    </h3>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding:16px 16px;">
+                                    <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.6;color:#6b7280;">
+                                        해당 링크로 들어오시면 서명 및 여러 추가 작업을 진행하실 수 있습니다. 원활한 서비스 이용을 위해 필요한 절차들을 완료해 주시기 바랍니다.
+                                    </p>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+
+                <!-- 문의 카드 -->
+                <tr>
+                    <td style="padding:16px 24px 0 24px;">
+                        <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:8px;">
+                            <tr>
+                                <td style="padding:16px 16px;border-bottom:1px solid #e5e7eb;">
+                                    <h3 style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:18px;font-weight:700;color:#1f2937;">
+                                        도움이 필요하신가요?
+                                    </h3>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding:16px 16px;">
+                                    <p style="margin:0 0 8px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.6;color:#6b7280;">
+                                        질문이나 문제가 있으시면 언제든 HisWork 고객지원팀으로 문의해 주세요.
+                                    </p>
+                                    <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.6;color:#6b7280;">
+                                        <strong style="color:#111827;">HisWork 지원팀</strong>에 문의하시면 빠른 도움을 받으실 수 있습니다.
+                                    </p>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+
+                <!-- 푸터 -->
+                <tr>
+                    <td style="padding:24px 24px 28px 24px;">
+                        <p style="margin:0;text-align:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.6;color:#6b7280;">
+                            이 이메일은 HisWork 시스템에서 발송되었습니다.
+                        </p>
+                    </td>
+                </tr>
+            </table>
+            <!-- /컨테이너 -->
+        </td>
+    </tr>
+</table>
 </body>
 </html>
