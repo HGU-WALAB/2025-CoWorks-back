@@ -9,6 +9,5 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class FailureRow {
     private String email;
-    private String courseName;
     private String taName;
 }
