@@ -50,9 +50,9 @@ public class MailService {
             ctx.setVariable("notificationType", "알림에 대한 test진행합니다.");
 
             // css 주입 방법
-            ClassPathResource cssRes = new ClassPathResource("mail-templates/common-styles.css");
-            String styles = new String(cssRes.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-            ctx.setVariable("styles", styles);
+//            ClassPathResource cssRes = new ClassPathResource("mail-templates/common-styles.css");
+//            String styles = new String(cssRes.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+//            ctx.setVariable("styles", styles);
 
             String html = templateEngine.process(template, ctx);
 
