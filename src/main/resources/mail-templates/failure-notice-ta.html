@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Delivery Failure Notice</title>
+  <!-- 이메일 클라이언트 호환: 인라인 스타일만 사용 -->
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <meta name="x-apple-disable-message-reformatting">
+  <meta name="format-detection" content="telephone=no,address=no,email=no,date=no,url=no">
+  <meta name="color-scheme" content="light only">
+</head>
+<body style="margin:0;padding:0;background-color:#f8f9fa;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
+<!-- 전체 래퍼 -->
+<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%"
+       style="border-collapse:collapse;background-color:#f8f9fa;">
+  <tr>
+    <td align="center" style="padding:24px;">
+      <!-- 컨테이너 -->
+      <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="600"
+             style="width:600px;max-width:600px;background:#ffffff;border-radius:8px;border:1px solid #e5e7eb;">
+        <tr>
+          <td style="padding:32px 24px 8px 24px;">
+            <!-- 헤더 -->
+            <h2 style="margin:0 0 16px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+                         font-size:24px;line-height:1.3;font-weight:700;color:#2563eb;border-bottom:2px solid #e5e7eb;padding-bottom:8px;">
+              전송 실패 안내: <span th:text="${course}"> 작업</span>
+            </h2>
+
+            <p style="margin:0 0 16px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+                        font-size:16px;line-height:1.6;color:#1f2937;">
+                <span style="display:inline-block;margin-right:4px;padding:2px 8px;border-radius:4px;border:1px solid #dbeafe;
+                             background:#eff6ff;color:#2563eb;font-weight:600;"
+                      th:text="${username}"></span> 님,
+              아래 수신자에게 <strong style="color:#111827;">알림 전송이 실패</strong>했습니다.
+              (발송 시각: <span th:text="${sentAt}">YYYY-MM-DD HH:mm</span>)
+            </p>
+
+            <!-- 요약 박스 -->
+            <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%"
+                   style="border-collapse:collapse;background:#f9fafb;border-left:4px solid #2563eb;border-radius:6px;margin:16px 0;">
+              <tr>
+                <td style="padding:12px 16px;">
+                  <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+                              font-size:15px;line-height:1.6;color:#374151;">
+                    총 실패 건수: <strong th:text="${failedCount}">0</strong>건
+                    <span th:if="${batchId != null}" style="color:#6b7280;">(배치 ID: <span th:text="${batchId}">BATCH-001</span>)</span>
+                  </p>
+                </td>
+              </tr>
+            </table>
+
+
+            <!-- 실패 내역 테이블 -->
+            <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0"
+                   style="border-collapse:collapse;margin:8px 0;border:1px solid #e5e7eb;border-radius:6px;">
+              <thead>
+              <tr>
+                <th align="left" style="padding:12px;background:#f9fafb;border-bottom:1px solid #e5e7eb;
+                  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+                  font-size:14px;color:#374151;">이메일</th>
+<!--                <th align="left" style="padding:12px;background:#f9fafb;border-bottom:1px solid #e5e7eb;-->
+<!--                  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;-->
+<!--                  font-size:14px;color:#374151;">수업명</th>-->
+                <th align="left" style="padding:12px;background:#f9fafb;border-bottom:1px solid #e5e7eb;
+                  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+                  font-size:14px;color:#374151;">TA명</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- failureRows: List<FailureRow(email, courseName, taName)) -->
+                <tr th:each="row : ${failureRows}">
+                  <td style="padding:12px;border-bottom:1px solid #e5e7eb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+                   font-size:14px;color:#1f2937;" th:text="${row.email}">student@example.edu</td>
+<!--                  <td style="padding:12px;border-bottom:1px solid #e5e7eb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;-->
+<!--                   font-size:14px;color:#1f2937;" th:text="${row.courseName}">컴퓨터공학개론</td>-->
+                  <td style="padding:12px;border-bottom:1px solid #e5e7eb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+                   font-size:14px;color:#1f2937;" th:text="${row.taName}">홍길동</td>
+                </tr>
+                <!-- 비어 있는 경우 안내 -->
+                <tr th:if="${#lists.isEmpty(failureRows)}">
+                  <td colspan="3" style="padding:16px;text-align:center;color:#6b7280;
+                    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+                    font-size:14px;">표시할 전송 실패 내역이 없습니다.</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <!-- 조치 버튼 영역 -->
+            <table role="presentation" border="0" cellpadding="0" cellspacing="0" align="center" style="margin:24px auto 8px auto;">
+              <tr>
+                <td align="center" bgcolor="#2563eb" style="border-radius:8px;">
+                  <a th:href="${retryLink}"
+                     style="display:inline-block;padding:12px 24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+                              font-size:16px;line-height:1.2;color:#ffffff;text-decoration:none;font-weight:600;border-radius:8px;background-color:#2563eb;">
+                    전송 재시도
+                  </a>
+                </td>
+              </tr>
+            </table>
+
+            <!-- 대체 링크 -->
+            <p style="margin:16px 0 0 0;text-align:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+                        font-size:13px;line-height:1.6;color:#6b7280;">
+              또는 대시보드에서 상세 내역을 확인하세요:
+              <a th:href="${dashboardLink}" style="color:#2563eb;text-decoration:underline;">전송 내역 대시보드</a>
+            </p>
+          </td>
+        </tr>
+
+        <!-- 푸터 -->
+        <tr>
+          <td style="padding:24px 24px 28px 24px;">
+            <p style="margin:0;text-align:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+                        font-size:12px;line-height:1.6;color:#6b7280;">
+              이 이메일은 시스템에서 자동 발송되었습니다. 회신이 필요한 경우 담당자에게 직접 연락해 주세요.
+            </p>
+          </td>
+        </tr>
+      </table>
+      <!-- /컨테이너 -->
+    </td>
+  </tr>
+</table>
+</body>
+</html>

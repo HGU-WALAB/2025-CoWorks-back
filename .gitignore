@@ -85,8 +85,9 @@ fabric.properties
 
 # *.iml
 # modules.xml
-# .idea/misc.xml
 # *.ipr
+
+.idea/codeStyles/
 
 # Sonarlint plugin
 # https://plugins.jetbrains.com/plugin/7973-sonarlint
@@ -188,3 +189,5 @@ gradle-app.setting
 
 .env
 uploads/
+.idea/misc.xml
+.idea/modules.xml
