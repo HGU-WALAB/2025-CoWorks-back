@@ -184,4 +184,6 @@ gradle-app.setting
 uploads/
 .idea/misc.xml
 .idea/modules.xml
+.idea/compiler.xml
 src/main/resources/*.properties
+
