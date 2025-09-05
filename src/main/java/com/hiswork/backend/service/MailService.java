@@ -9,11 +9,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 
 import java.nio.charset.StandardCharsets;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -25,75 +28,72 @@ public class MailService {
 
     private final JavaMailSender mailSender;
     private final TemplateEngine templateEngine;
-    private final UserRepository userRepository;
 
-    // test.html 템플릿을 이용한 메일 전송 테스트
-    public void sendTemplateTest(MailRequest.MailNotificationRequest mailRequest, String template, Map<String, Object> variables) {
+    DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.of("Asia/Seoul"));
+    private static final String linkDomain = "http://localhost:5173/tasks";
+
+
+    /**
+     * 편집자 할당 알림 메일 전송
+     * @param command
+     */
+    @Async
+    public void sendAssignEditorNotification(MailRequest.EditorAssignmentEmailCommand command) {
         try {
             Context ctx = new Context();
-            variables.forEach(ctx::setVariable);
-            String html = templateEngine.process(template, ctx);
+            ctx.setVariable("projectName", command.getProjectName());
+            ctx.setVariable("documentTitle", command.getDocumentTitle());
+            ctx.setVariable("actionLink", linkDomain);
+            ctx.setVariable("creatorName", command.getCreatorName());
+            ctx.setVariable("editorName", command.getEditorName());
+            ctx.setVariable("dueDate", command.getDueDate() != null ? fmt.format(command.getDueDate()) : null);
+
+            String html = templateEngine.process("assign_editor_notification", ctx);
 
             MimeMessage mime = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(
-                    mime, true, StandardCharsets.UTF_8.name());
-
-            helper.setTo(mailRequest.getTo());
-            helper.setSubject("이것은 test입니다.");
+            MimeMessageHelper helper = new MimeMessageHelper(mime, true, StandardCharsets.UTF_8.name());
+            helper.setTo(command.getEditorEmail());
+            helper.setSubject("[Hiswork] 편집자 할당 알림");
             helper.setText(html, true);
+
+
+//            helper.addInline("logoImage", new ClassPathResource("static/images/hiswork-logo.png"));
 
             mailSender.send(mime);
         } catch (Exception e) {
-            FailureRow failureRow = new FailureRow();
-            failureRow.setEmail(mailRequest.getTo());
-            failureRow.setTaName("unknown");
-
-
+            throw new RuntimeException("편집자 할당 메일 전송 실패", e);
         }
     }
 
     /**
-     * notification.html 템플릿을 이용한 메일 전송 테스트 <br/>
-     * 실제로는 sendNotificationInBatch 메서드를 통해 대량 메일 전송 <br/>
-     * -> 사유 : 매우 오래걸림.. 1개당 5초 이상
-     * @param mailRequest
-     * @param senderId
+     * 검토자 할당 알림 메일 전송
+     * @param command
      */
-    public void sendNotificationTest(MailRequest.MailNotificationRequest mailRequest, UUID senderId) {
-        User sender = userRepository.findById(senderId).orElse(null);
+    @Async
+    public void sendAssignReviewerNotification(MailRequest.ReviewerAssignmentEmailCommand command) {
         try {
-            // 변수 주입 방법
             Context ctx = new Context();
-            ctx.setVariable("message", mailRequest.getMessage());
-            ctx.setVariable("notificationType", "TA 문서일지 작성");
-            ctx.setVariable("username", "zzang");
-            ctx.setVariable("verifyLink", "https://hisnet.handong.edu/");
+            ctx.setVariable("projectName", command.getProjectName());
+            ctx.setVariable("documentTitle", command.getDocumentTitle());
+            ctx.setVariable("actionLink", linkDomain);
+            ctx.setVariable("editorName", command.getEditorName());
+            ctx.setVariable("reviewerName", command.getReviewerName());
+            ctx.setVariable("reviewDueDateStr", command.getReviewDueDate() != null ? fmt.format(command.getReviewDueDate()) : null);
 
-            // css 주입 방법 -> inline style로 대체 why? gmail에서 css 지원을 안함
-            // ClassPathResource cssRes = new ClassPathResource("mail-templates/common-styles.css");
-            // String styles = new String(cssRes.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-            // ctx.setVariable("styles", styles);
-
-            // template 처리 : notification.html
-            String html = templateEngine.process("notifications", ctx);
+            String html = templateEngine.process("assign_reviewer_notification", ctx);
 
             MimeMessage mime = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(
-                    mime, true, StandardCharsets.UTF_8.name());
-
-            // 누구에게 보낼지
-            helper.setTo(mailRequest.getTo());
-            // 제목을 작성
-            helper.setSubject("[Hiswork] 알림이 도착했습니다.");
-            // 본문 작성 (html)
+            MimeMessageHelper helper = new MimeMessageHelper(mime, true, StandardCharsets.UTF_8.name());
+            helper.setTo(command.getReviewerEmail());
+            helper.setSubject("[Hiswork] 검토자 할당 알림");
             helper.setText(html, true);
 
+//            helper.addInline("logoImage", new ClassPathResource("static/images/hiswork-logo.png"));
             mailSender.send(mime);
         } catch (Exception e) {
-            notifyTaAboutFailures(sender);
+            throw new RuntimeException("검토자 할당 메일 전송 실패", e);
         }
     }
-
     /**
      * 테스트용 TA 보고 메일<br/>
      * 실제 실패 리스트 없이 테스트용 1개만
