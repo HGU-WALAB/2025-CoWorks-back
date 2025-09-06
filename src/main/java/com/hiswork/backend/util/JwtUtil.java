@@ -1,11 +1,7 @@
 package com.hiswork.backend.util;
 
 import io.jsonwebtoken.*;
-import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.spec.SecretKeySpec;
@@ -36,7 +32,7 @@ public class JwtUtil {
                 .setClaims(claims)
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + EXPIRE_TIME_MS))
-                .signWith(SignatureAlgorithm.HS256, secretKey)
+                .signWith(secretKey, SignatureAlgorithm.HS256)
                 .compact();
     }
 
@@ -51,7 +47,48 @@ public class JwtUtil {
                 .setClaims(claims)
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + REFRESH_EXPIRE_TIME_MS))
-                .signWith(SignatureAlgorithm.HS256, secretKey)
+                .signWith(secretKey, SignatureAlgorithm.HS256)
                 .compact();
+    }
+
+    // JWT 토큰 검증
+    public static boolean validateToken(String token, Key secretKey) {
+        try {
+            Jwts.parserBuilder()
+                    .setSigningKey(secretKey)
+                    .build()
+                    .parseClaimsJws(token);
+            return true;
+        } catch (JwtException | IllegalArgumentException e) {
+            log.warn("Invalid JWT token: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    // JWT 토큰에서 Claims 추출
+    public static Claims getClaims(String token, Key secretKey) {
+        return Jwts.parserBuilder()
+                .setSigningKey(secretKey)
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+    }
+
+    // JWT 토큰에서 uniqueId 추출
+    public static String getUniqueIdFromToken(String token, Key secretKey) {
+        Claims claims = getClaims(token, secretKey);
+        return claims.get("uniqueId", String.class);
+    }
+
+    // JWT 토큰에서 name 추출
+    public static String getNameFromToken(String token, Key secretKey) {
+        Claims claims = getClaims(token, secretKey);
+        return claims.get("name", String.class);
+    }
+
+    // JWT 토큰에서 department 추출
+    public static String getDepartmentFromToken(String token, Key secretKey) {
+        Claims claims = getClaims(token, secretKey);
+        return claims.get("department", String.class);
     }
 } 

@@ -63,38 +63,6 @@ public class User {
                 .role(Role.USER) // 기본 상태를 ACTIVE로 설정
                 .build();
     }
-
-//    @Id
-//    @GeneratedValue(generator = "uuid2")
-//    @GenericGenerator(name = "uuid2", strategy = "uuid2")
-//    @Column(columnDefinition = "UUID")
-//    private UUID id;
-//
-//    @Column(unique = true, nullable = false)
-//    private String email;
-//
-//    @Column(nullable = false)
-//    @JsonIgnore
-//    private String password;
-//
-//    @Column(nullable = false)
-//    private String name;
-//
-//    @Enumerated(EnumType.STRING)
-//    private Position position;
-//
-//    private String profileImage;
-//
-//    @Enumerated(EnumType.STRING)
-//    private Role role;
-//
-//    private String signatureImageUrl;
-    
-//    @CreationTimestamp
-//    private LocalDateTime createdAt;
-//
-//    @UpdateTimestamp
-//    private LocalDateTime updatedAt;
     
     public enum Role {
         ADMIN, USER
