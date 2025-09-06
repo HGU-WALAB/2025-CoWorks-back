@@ -1,6 +1,5 @@
 package com.hiswork.backend.domain;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.hiswork.backend.dto.AuthDto;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -83,7 +82,8 @@ public class User {
                 .major2(dto.getMajor2())
                 .grade(dto.getGrade())
                 .semester(dto.getSemester())
-                .role(Role.USER) // 기본 상태를 ACTIVE로 설정
+                .role(Role.USER) // 기본 상태를 USER로 설정
+                .position(Position.학생) // 기본값을 학생으로 설정
                 .build();
     }
 }
