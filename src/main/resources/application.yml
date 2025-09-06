@@ -10,7 +10,7 @@ spring:
       max-file-size: 10MB
       max-request-size: 10MB
       enabled: true
-  
+
   datasource:
     url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
     username: ${DB_USERNAME}
@@ -18,7 +18,7 @@ spring:
     driver-class-name: org.postgresql.Driver
     hikari:
       connection-test-query: SELECT 1
-  
+
   jpa:
     hibernate:
       ddl-auto: update
@@ -27,7 +27,7 @@ spring:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
-  
+
   mail:
     host: smtp.gmail.com
     port: 587
@@ -39,7 +39,7 @@ spring:
           auth: true
           starttls:
             enable: true
-  
+
   security:
     oauth2:
       client:
@@ -52,17 +52,22 @@ server:
   port: 8080
 
 app:
-  jwt:
-    secret: ${JWT_SECRET}
-    expiration: 86400000 # 24시간 (밀리초)
-  
   file:
     upload-dir: ./uploads
     pdf-templates-dir: ./uploads/pdf-templates
+
+    jwt:
+        secret: ${JWT_SECRET}
+        expiration: 864000000 # 24h (ms)
+
+
+hisnet:
+  url: ${HISNET_URL}
+  access_key: ${HISNET_ACCESS_KEY}
 
 logging:
   level:
     com.hiswork.backend.service.PdfService: DEBUG
     com.hiswork.backend.controller.DocumentController: DEBUG
     com.hiswork.backend.service.DocumentService: DEBUG
-    root: INFO 
+    root: INFO
