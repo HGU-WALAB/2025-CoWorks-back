@@ -34,7 +34,7 @@ public class AuthUtil {
         }
         
         String uniqueId = JwtUtil.getUniqueIdFromToken(token, key);
-        return userRepository.findById(uniqueId)
+        return userRepository.findByUniqueId(uniqueId)
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
     }
     

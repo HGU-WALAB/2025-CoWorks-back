@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.UUID;
 
 @Data
 @Builder
@@ -30,19 +31,19 @@ public class DocumentHistoryResponse {
                 .status(tasksLog.getStatus().name())
                 .action(getActionFromStatus(tasksLog.getStatus()))
                 .description(getDescriptionFromStatus(tasksLog.getStatus(), tasksLog.getAssignedBy(), tasksLog.getAssignedUser()))
-                .performedBy(tasksLog.getAssignedUser().getEmail())
+                .performedBy(tasksLog.getAssignedUser().getId().toString())
                 .performedByName(tasksLog.getAssignedUser().getName())
                 .createdAt(tasksLog.getCreatedAt())
                 .build();
     }
     
-    public static DocumentHistoryResponse from(TasksLog tasksLog, Map<String, DocumentRole.TaskRole> userRoleMap) {
+    public static DocumentHistoryResponse from(TasksLog tasksLog, Map<UUID, DocumentRole.TaskRole> userRoleMap) {
         return DocumentHistoryResponse.builder()
                 .id(tasksLog.getId())
                 .status(tasksLog.getStatus().name())
                 .action(getActionFromStatus(tasksLog.getStatus()))
                 .description(getDescriptionFromStatusWithRole(tasksLog.getStatus(), tasksLog.getAssignedBy(), tasksLog.getAssignedUser(), userRoleMap))
-                .performedBy(tasksLog.getAssignedUser().getEmail())
+                .performedBy(tasksLog.getAssignedUser().getId().toString())
                 .performedByName(tasksLog.getAssignedUser().getName())
                 .createdAt(tasksLog.getCreatedAt())
                 .build();
@@ -74,17 +75,17 @@ public class DocumentHistoryResponse {
         }
     }
     
-    private static String getDescriptionFromStatusWithRole(TasksLog.TaskStatus status, User assignedBy, User assignedUser, Map<String, DocumentRole.TaskRole> userRoleMap) {
+    private static String getDescriptionFromStatusWithRole(TasksLog.TaskStatus status, User assignedBy, User assignedUser, Map<UUID, DocumentRole.TaskRole> userRoleMap) {
         switch (status) {
             case PENDING:
-                String assignedByRole = getRoleDisplayName(userRoleMap.get(assignedBy.getEmail()));
-                String assignedUserRole = getRoleDisplayName(userRoleMap.get(assignedUser.getEmail()));
+                String assignedByRole = getRoleDisplayName(userRoleMap.get(assignedBy.getId()));
+                String assignedUserRole = getRoleDisplayName(userRoleMap.get(assignedUser.getId()));
                 return assignedBy.getName() + "(" + assignedByRole + ")이(가) " + assignedUser.getName() + "(" + assignedUserRole + ")에게 작업을 할당했습니다.";
             case COMPLETED:
-                String completedUserRole = getRoleDisplayName(userRoleMap.get(assignedUser.getEmail()));
+                String completedUserRole = getRoleDisplayName(userRoleMap.get(assignedUser.getId()));
                 return assignedUser.getName() + "(" + completedUserRole + ")이(가) 작업을 완료했습니다.";
             case REJECTED:
-                String rejectedUserRole = getRoleDisplayName(userRoleMap.get(assignedUser.getEmail()));
+                String rejectedUserRole = getRoleDisplayName(userRoleMap.get(assignedUser.getId()));
                 return assignedUser.getName() + "(" + rejectedUserRole + ")이(가) 작업을 거부했습니다.";
             default:
                 return "상태가 변경되었습니다.";

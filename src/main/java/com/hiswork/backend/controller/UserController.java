@@ -45,6 +45,7 @@ public class UserController {
             List<Map<String, Object>> result = users.stream()
                     .map(user -> {
                         Map<String, Object> userMap = Map.of(
+                                "id", user.getId().toString(),
                                 "uniqueId", user.getUniqueId(),
                                 "email", user.getEmail() != null ? user.getEmail() : "",
                                 "name", user.getName(),
