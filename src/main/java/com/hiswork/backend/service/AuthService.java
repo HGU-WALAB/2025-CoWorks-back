@@ -12,20 +12,21 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.security.Key;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
 @Slf4j
 public class AuthService {
-    
+
     private final UserRepository userRepository;
 
     @Value("${jwt.secret_key}")
     private String SECRET_KEY;
 
-    public User getLoginUser(String uniqueId) {
-        return userRepository.findById(uniqueId)
+    public User getLoginUser(UUID id) {
+        return userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다"));
     }
 
@@ -33,7 +34,7 @@ public class AuthService {
     @Transactional
     public AuthDto login(AuthDto authDto) {
         // 사용자 찾기
-        Optional<User> user = userRepository.findById(authDto.getUniqueId());
+        Optional<User> user = userRepository.findByUniqueId(authDto.getUniqueId());
         User loggedInUser = user.orElseGet(() -> User.from(authDto));
         userRepository.save(loggedInUser);
 

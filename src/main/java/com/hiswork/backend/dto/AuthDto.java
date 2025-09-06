@@ -9,9 +9,9 @@ import lombok.*;
 @Setter
 // 사용자 정보 DTO
 public class AuthDto {
-    private String uniqueId;
     private String hisnetToken; // 히즈넷에서 받은 토큰
     private String token; // jwt
+    private String uniqueId;
     private String name;
     private String email;
     private String department;

@@ -34,7 +34,7 @@ public class UserController {
                         .collect(Collectors.toList());
             } else {
                 // 이메일 또는 이름으로 검색
-                users = userRepository.findByEmailContainingIgnoreCaseOrNameContainingIgnoreCase(
+                users = userRepository.findByUniqueIdContainingIgnoreCaseOrNameContainingIgnoreCase(
                         query.trim(), query.trim()
                 ).stream()
                         .limit(20)
@@ -45,10 +45,10 @@ public class UserController {
             List<Map<String, Object>> result = users.stream()
                     .map(user -> {
                         Map<String, Object> userMap = Map.of(
-                                "id", user.getId(),
-                                "email", user.getEmail(),
+                                "uniqueId", user.getUniqueId(),
+                                "email", user.getEmail() != null ? user.getEmail() : "",
                                 "name", user.getName(),
-                                "position", user.getPosition() != null ? user.getPosition().name() : ""
+                                "department", user.getDepartment() != null ? user.getDepartment() : ""
                         );
                         return userMap;
                     })

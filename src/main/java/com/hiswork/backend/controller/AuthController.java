@@ -5,21 +5,20 @@ import com.hiswork.backend.service.AuthService;
 import com.hiswork.backend.service.HisnetLoginService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Map;
+        import java.util.Map;
 
 @RestController
 @RequestMapping("/api/hiswork/auth")
 @RequiredArgsConstructor
 @Slf4j
 public class AuthController {
-    
+
     private final AuthService authService;
     private final HisnetLoginService hisnetLoginService;
 

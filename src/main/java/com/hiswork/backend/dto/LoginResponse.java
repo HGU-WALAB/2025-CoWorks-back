@@ -10,7 +10,7 @@ public class LoginResponse {
     private String userId;
     private String userName;
 
-    public static LoginResponse from(AuthDto authDto){
+    public static LoginResponse from(AuthDto authDto) {
         return LoginResponse.builder()
                 .token(authDto.getToken())
                 .userId(authDto.getUniqueId())
