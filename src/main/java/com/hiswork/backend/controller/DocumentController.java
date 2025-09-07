@@ -2,6 +2,8 @@ package com.hiswork.backend.controller;
 
 import com.hiswork.backend.domain.Document;
 import com.hiswork.backend.domain.User;
+import com.hiswork.backend.domain.Position;
+import com.hiswork.backend.domain.Role;
 import com.hiswork.backend.dto.DocumentCreateRequest;
 import com.hiswork.backend.dto.DocumentHistoryResponse;
 import com.hiswork.backend.dto.DocumentResponse;
@@ -16,7 +18,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.nio.file.Files;
@@ -38,7 +39,6 @@ public class DocumentController {
     private final DocumentHistoryService documentHistoryService;
     private final UserRepository userRepository;
     private final AuthUtil authUtil;
-    private final PasswordEncoder passwordEncoder;
     private final PdfService pdfService;
     
     @PostMapping
@@ -50,7 +50,7 @@ public class DocumentController {
         
         try {
             User creator = getCurrentUser(httpRequest);
-            log.info("Creator user: {}", creator.getEmail());
+            log.info("Creator user: {}", creator.getId());
             
             Document document = documentService.createDocument(
                     request.getTemplateId(), 
@@ -151,7 +151,7 @@ public class DocumentController {
             User user = getCurrentUser(httpRequest);
             
             log.info("검토자 할당 요청 - 문서 ID: {}, 검토자: {}, 요청자: {}", 
-                    id, reviewerEmail, user.getEmail());
+                    id, reviewerEmail, user.getId());
             
             Document document = documentService.assignReviewer(id, reviewerEmail, user);
             log.info("Reviewer assigned successfully to document {}", id);
@@ -235,7 +235,7 @@ public class DocumentController {
         
         try {
             User user = getCurrentUser(httpRequest);
-            log.info("편집 시작 요청 - 문서 ID: {}, 사용자: {}", documentId, user.getEmail());
+            log.info("편집 시작 요청 - 문서 ID: {}, 사용자: {}", documentId, user.getId());
             
             Document document = documentService.startEditing(documentId, user);
             
@@ -255,7 +255,7 @@ public class DocumentController {
         
         try {
             User user = getCurrentUser(httpRequest);
-            log.info("편집 완료 요청 - 문서 ID: {}, 사용자: {}", documentId, user.getEmail());
+            log.info("편집 완료 요청 - 문서 ID: {}, 사용자: {}", documentId, user.getId());
             
             // 문서 존재 확인
             Document document = documentService.getDocumentById(documentId)
@@ -355,7 +355,7 @@ public class DocumentController {
             
             // JWT 토큰에서 사용자 정보 추출 시도
             User user = authUtil.getCurrentUser(request);
-            log.info("JWT 토큰에서 추출된 사용자: {} ({})", user.getName(), user.getEmail());
+            log.info("JWT 토큰에서 추출된 사용자: {} ({})", user.getName(), user.getId());
             return user;
         } catch (Exception e) {
             log.error("JWT 토큰 추출 실패: {}", e.getMessage(), e);
@@ -373,9 +373,8 @@ public class DocumentController {
                         User newUser = User.builder()
                                 .name(defaultName)
                                 .email(email)
-                                .password(passwordEncoder.encode(defaultPassword))
-                                .position(User.Position.교직원)
-                                .role(User.Role.USER)
+                                .position(Position.교직원)
+                                .role(Role.USER)
                                 .build();
                         return userRepository.save(newUser);
                     });

@@ -2,6 +2,8 @@ package com.hiswork.backend.controller;
 
 import com.hiswork.backend.domain.Template;
 import com.hiswork.backend.domain.User;
+import com.hiswork.backend.domain.Position;
+import com.hiswork.backend.domain.Role;
 import com.hiswork.backend.dto.TemplateCreateRequest;
 import com.hiswork.backend.dto.TemplateResponse;
 import com.hiswork.backend.service.TemplateService;
@@ -14,7 +16,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -33,7 +34,6 @@ public class TemplateController {
     private final PdfService pdfService;
     private final UserRepository userRepository;
     private final AuthUtil authUtil;
-    private final PasswordEncoder passwordEncoder;
     
 //    @PostMapping
 //    public ResponseEntity<?> createTemplate(
@@ -91,7 +91,7 @@ public class TemplateController {
             
             Template savedTemplate = templateService.savePdfTemplate(template);
             
-            log.info("PDF 템플릿 생성 성공: {} by {}", savedTemplate.getName(), user.getEmail());
+            log.info("PDF 템플릿 생성 성공: {} by {}", savedTemplate.getName(), user.getId());
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(Map.of(
                             "template", TemplateResponse.from(savedTemplate),
@@ -132,7 +132,7 @@ public class TemplateController {
             User user = getCurrentUser(httpRequest);
             Template template = templateService.updateTemplate(id, request, user);
             
-            log.info("템플릿 수정 성공: {} by {}", template.getName(), user.getEmail());
+            log.info("템플릿 수정 성공: {} by {}", template.getName(), user.getId());
             return ResponseEntity.ok(TemplateResponse.from(template));
         } catch (Exception e) {
             log.error("템플릿 수정 실패: {}", e.getMessage(), e);
@@ -147,7 +147,7 @@ public class TemplateController {
             User user = getCurrentUser(httpRequest);
             templateService.deleteTemplate(id, user);
             
-            log.info("템플릿 삭제 성공: {} by {}", id, user.getEmail());
+            log.info("템플릿 삭제 성공: {} by {}", id, user.getId());
             return ResponseEntity.noContent().build();
         } catch (Exception e) {
             log.error("템플릿 삭제 실패: {}", e.getMessage(), e);
@@ -173,9 +173,8 @@ public class TemplateController {
                     User newUser = User.builder()
                             .name(defaultName)
                             .email(email)
-                            .password(passwordEncoder.encode(defaultPassword))
-                            .position(User.Position.교직원)
-                            .role(User.Role.USER)
+                            .position(Position.교직원)
+                            .role(Role.USER)
                             .build();
                     return userRepository.save(newUser);
                 });

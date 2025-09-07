@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -28,7 +29,7 @@ public class DocumentHistoryService {
     private final DocumentRoleRepository documentRoleRepository;
     
     public List<DocumentHistoryResponse> getDocumentHistory(Long documentId, User user) {
-        log.info("문서 히스토리 조회 - 문서 ID: {}, 요청자: {}", documentId, user.getEmail());
+        log.info("문서 히스토리 조회 - 문서 ID: {}, 요청자: {}", documentId, user.getId());
         
         // 문서 존재 확인
         Document document = documentRepository.findById(documentId)
@@ -36,10 +37,10 @@ public class DocumentHistoryService {
         
         // 사용자가 해당 문서에 접근 권한이 있는지 확인
         // (생성자, 편집자, 검토자 중 하나라도 해당되면 접근 가능)
-        boolean hasAccess = tasksLogRepository.existsByDocumentIdAndAssignedUserEmail(documentId, user.getEmail());
+        boolean hasAccess = tasksLogRepository.existsByDocumentIdAndAssignedUserId(documentId, user.getId());
         
         if (!hasAccess) {
-            log.warn("문서 히스토리 접근 권한 없음 - 문서 ID: {}, 사용자: {}", documentId, user.getEmail());
+            log.warn("문서 히스토리 접근 권한 없음 - 문서 ID: {}, 사용자: {}", documentId, user.getId());
             throw new RuntimeException("문서 히스토리에 접근할 권한이 없습니다.");
         }
         
@@ -48,9 +49,9 @@ public class DocumentHistoryService {
         
         // 문서의 역할 정보 조회 (사용자별 역할 매핑)
         List<DocumentRole> documentRoles = documentRoleRepository.findByDocumentId(documentId);
-        Map<String, DocumentRole.TaskRole> userRoleMap = documentRoles.stream()
+        Map<UUID, DocumentRole.TaskRole> userRoleMap = documentRoles.stream()
                 .collect(Collectors.toMap(
-                        role -> role.getAssignedUser().getEmail(),
+                        role -> role.getAssignedUser().getId(),
                         DocumentRole::getTaskRole
                 ));
         

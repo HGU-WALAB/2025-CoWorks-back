@@ -16,7 +16,8 @@ import com.hiswork.backend.repository.TemplateRepository;
 import com.hiswork.backend.repository.TasksLogRepository;
 import com.hiswork.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import com.hiswork.backend.domain.Position;
+import com.hiswork.backend.domain.Role;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,7 +41,6 @@ public class DocumentService {
     private final TasksLogRepository tasksLogRepository;
     private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
-    private final PasswordEncoder passwordEncoder;
     
     public Document createDocument(Long templateId, User creator, String editorEmail) {
         Template template = templateRepository.findById(templateId)
@@ -190,7 +190,7 @@ public class DocumentService {
             tasksLogRepository.save(editingLog);
             
             log.info("문서 편집 시작 - 문서 ID: {}, 사용자: {}, 상태: {} -> EDITING", 
-                    documentId, user.getEmail(), "DRAFT");
+                    documentId, user.getId(), "DRAFT");
         }
         
         return document;
@@ -271,13 +271,13 @@ public class DocumentService {
     
     public Document assignReviewer(Long documentId, String reviewerEmail, User assignedBy) {
         log.info("검토자 할당 요청 - 문서 ID: {}, 검토자 이메일: {}, 요청자: {}", 
-                documentId, reviewerEmail, assignedBy.getEmail());
+                documentId, reviewerEmail, assignedBy.getId());
         
         Document document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new RuntimeException("Document not found"));
         
         log.info("문서 정보 - ID: {}, 상태: {}, 생성자: {}", 
-                document.getId(), document.getStatus(), document.getTemplate().getCreatedBy().getEmail());
+                document.getId(), document.getStatus(), document.getTemplate().getCreatedBy().getId());
         
         // 검토자 할당 권한 확인
         boolean isCreator = isCreator(document, assignedBy);
@@ -297,7 +297,7 @@ public class DocumentService {
         }
         
         log.info("권한 확인 - 요청자: {}, 생성자 여부: {}, 검토자 할당 권한: {}", 
-                assignedBy.getEmail(), isCreator, hasAssignReviewerPermission);
+                assignedBy.getId(), isCreator, hasAssignReviewerPermission);
         
         if (!hasAssignReviewerPermission) {
             throw new RuntimeException("검토자를 할당할 권한이 없습니다. 생성자이거나 검토자 지정 권한이 있는 편집자만 가능합니다.");
@@ -366,16 +366,15 @@ public class DocumentService {
                     User newUser = User.builder()
                             .name(defaultName)
                             .email(email)
-                            .password(passwordEncoder.encode("defaultPassword123"))
-                            .position(User.Position.교직원)
-                            .role(User.Role.USER)
+                            .position(Position.교직원)
+                            .role(Role.USER)
                             .build();
                     return userRepository.save(newUser);
                 });
     }
     
     public Document completeEditing(Long documentId, User user) {
-        log.info("편집 완료 처리 시작 - 문서 ID: {}, 사용자: {}", documentId, user.getEmail());
+        log.info("편집 완료 처리 시작 - 문서 ID: {}, 사용자: {}", documentId, user.getId());
         
         Document document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new RuntimeException("Document not found"));
@@ -444,7 +443,7 @@ public class DocumentService {
             ObjectNode data = (ObjectNode) document.getData();
             ObjectNode signatures = data.has("signatures") ? 
                     (ObjectNode) data.get("signatures") : objectMapper.createObjectNode();
-            signatures.put(user.getEmail(), signatureData);
+            signatures.put(user.getId().toString(), signatureData);
             data.set("signatures", signatures);
             document.setData(data);
         }
@@ -509,7 +508,7 @@ public class DocumentService {
             return isReviewer(document, user) && 
                    document.getStatus() == Document.DocumentStatus.READY_FOR_REVIEW;
         } catch (Exception e) {
-            log.error("Error checking review permission for document {} and user {}", documentId, user.getEmail(), e);
+            log.error("Error checking review permission for document {} and user {}", documentId, user.getId(), e);
             return false;
         }
     }
