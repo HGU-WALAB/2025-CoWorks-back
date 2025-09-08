@@ -1,6 +1,6 @@
 package com.hiswork.backend.dto;
 
-import com.hiswork.backend.domain.User;
+import com.hiswork.backend.domain.Position;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -26,7 +26,7 @@ public class SignupRequest {
     // Position enum 값 검증을 위한 메서드
     public boolean isValidPosition() {
         try {
-            User.Position.valueOf(position);
+            Position.valueOf(position);
             return true;
         } catch (IllegalArgumentException e) {
             return false;
