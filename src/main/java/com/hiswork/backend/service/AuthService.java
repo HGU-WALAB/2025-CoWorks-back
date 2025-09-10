@@ -66,7 +66,7 @@ public class AuthService {
     }
 
     // RefreshToken 생성
-    public String createRefreshToken(String uniqueId, String name) {
+    public String createRefreshToken(String uniqueId, String name, String department) {
         Key key = JwtUtil.getSigningKey(SECRET_KEY);
         return JwtUtil.createRefreshToken(uniqueId, name, key);
     }
