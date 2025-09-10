@@ -12,7 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/hiswork/auth")
+@RequestMapping("/api/auth")
 @RequiredArgsConstructor
 @Slf4j
 public class AuthController {
@@ -33,7 +33,8 @@ public class AuthController {
         String accessToken_hiswork = loginResponse.getToken();
         String refreshToken_hiswork = authService.createRefreshToken(
                 loginResponse.getUserId(),
-                loginResponse.getUserName()
+                loginResponse.getUserName(),
+                loginResponse.getDepartment()
         );
 
         // 4. 토큰을 쿠키에 담아 응답 헤더에 추가
