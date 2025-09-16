@@ -74,6 +74,11 @@ public class User {
     // 서명 이미지 URL
     private String signatureImageUrl;
 
+    // 폴더 접근 권한
+    @Column(name = "has_folder_access", nullable = false)
+    @Builder.Default
+    private Boolean hasFolderAccess = false;
+
 
     public static User from(AuthDto dto) {
         return User.builder()
@@ -88,5 +93,19 @@ public class User {
                .role(Role.USER) // 기본 상태를 USER로 설정
                .position(Position.학생) // 기본값을 학생으로 설정
                 .build();
+    }
+
+    // 폴더 접근 권한 확인 헬퍼 메서드
+    public boolean canAccessFolders() {
+        return Boolean.TRUE.equals(this.hasFolderAccess);
+    }
+
+    // 폴더 접근 권한 부여/해제 메서드
+    public void grantFolderAccess() {
+        this.hasFolderAccess = true;
+    }
+
+    public void revokeFolderAccess() {
+        this.hasFolderAccess = false;
     }
 }
