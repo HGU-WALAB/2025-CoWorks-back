@@ -1,17 +1,18 @@
 package com.hiswork.backend.service;
 
 import com.hiswork.backend.domain.User;
-import com.hiswork.backend.dto.AuthDto;
+import com.hiswork.backend.dto.*;
 import com.hiswork.backend.repository.UserRepository;
 import com.hiswork.backend.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.security.Key;
-import java.util.Optional;
+// import java.security.Key;
+// import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -21,6 +22,8 @@ import java.util.UUID;
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtUtil jwtUtil;
 
     @Value("${jwt.secret_key}")
     private String SECRET_KEY;
@@ -30,45 +33,102 @@ public class AuthService {
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다"));
     }
 
-    // 로그인
+    // test용 회원가입
     @Transactional
-    public AuthDto login(AuthDto authDto) {
-        // 사용자 찾기
-        Optional<User> user = userRepository.findByUniqueId(authDto.getUniqueId());
-        User loggedInUser = user.orElseGet(() -> User.from(authDto));
-        userRepository.save(loggedInUser);
+    public SignUpResponse signup(SignupRequest request){
+        log.info("회원가입 시작 - 이메일: {}, 이름: {}, 직분: {}", 
+                request.getEmail(), request.getName(), request.getPosition());
 
-        Key key = JwtUtil.getSigningKey(SECRET_KEY);
+        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+            log.warn("이미 존재하는 이메일: {}", request.getEmail());
+            throw new RuntimeException("이미 존재하는 이메일입니다");
+        }
 
-        String accessToken_hiswork = JwtUtil.createToken(
-                loggedInUser.getUniqueId(),
-                loggedInUser.getName(),
-                loggedInUser.getDepartment(),
-                key
-        );
+        // SignupRequest의 position 검증
+        if (!request.isValidPosition()) {
+            log.warn("유효하지 않은 직분: {}", request.getPosition());
+            throw new RuntimeException("유효하지 않은 직분입니다");
+        }
 
-        log.info("✅ Generated AccessToken: {}", accessToken_hiswork);
-
-        // JWT 토큰과 사용자 정보 반환
-        return AuthDto.builder()
-                .token(accessToken_hiswork) // JWT 토큰
-                .uniqueId(loggedInUser.getUniqueId())
-                .name(loggedInUser.getName())
-                .email(loggedInUser.getEmail()) // 편집자/검토자 찾을 때 필요할 것 같아서 추가
-                .department(loggedInUser.getDepartment())
+        User user = User.builder()
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .name(request.getName())
+                .position(com.hiswork.backend.domain.Position.valueOf(request.getPosition())) // SignupRequest에서 받은 position 사용
+                .role(com.hiswork.backend.domain.Role.USER) // 기본값으로 USER 설정
                 .build();
+
+        log.info("사용자 객체 생성 완료 - ID: {}, 이메일: {}", user.getId(), user.getEmail());
+
+        user = userRepository.save(user);
+        log.info("사용자 데이터베이스 저장 완료 - ID: {}, 이메일: {}", user.getId(), user.getEmail());
+
+        // JWT 토큰 생성
+        String token = jwtUtil.generateToken(user);
+        log.info("JWT 토큰 생성 완료 - 이메일: {}", user.getEmail());
+
+        SignUpResponse response = SignUpResponse.from(user, token);
+        log.info("회원가입 완료 - 이메일: {}, 토큰 길이: {}", user.getEmail(), token.length());
+        
+        return response;
     }
 
-    // AccessToken 생성
-    public String createAccessToken(String uniqueId, String name, String department) {
-        Key key = JwtUtil.getSigningKey(SECRET_KEY);
-        return JwtUtil.createToken(uniqueId, name, department, key);
+    // 테스트 로그인
+    public SignUpResponse login(LoginRequest request){
+        // 사용자 찾기
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("존재하지 않는 이메일입니다"));
+
+        // 비밀번호 확인 (해시된 비밀번호와 평문 비밀번호 비교)
+        if(!passwordEncoder.matches(request.getPassword(), user.getPassword())){
+            throw new RuntimeException("비밀번호가 일치하지 않습니다");
+        }
+
+        // JWT 토큰 생성
+        String token = jwtUtil.generateToken(user);
+
+        return SignUpResponse.from(user, token);
     }
 
-    // RefreshToken 생성
-    public String createRefreshToken(String uniqueId, String name, String department) {
-        Key key = JwtUtil.getSigningKey(SECRET_KEY);
-        return JwtUtil.createRefreshToken(uniqueId, name, key);
-    }
+    // 히즈넷 로그인
+//    @Transactional
+//    public AuthDto login(AuthDto authDto) {
+//        // 사용자 찾기
+//        Optional<User> user = userRepository.findByUniqueId(authDto.getUniqueId());
+//        User loggedInUser = user.orElseGet(() -> User.from(authDto));
+//        userRepository.save(loggedInUser);
+//
+//        Key key = JwtUtil.getSigningKey(SECRET_KEY);
+//
+//        String accessToken_hiswork = JwtUtil.createToken(
+//                loggedInUser.getUniqueId(),
+//                loggedInUser.getName(),
+//                loggedInUser.getDepartment(),
+//                key
+//        );
+//
+//        log.info("✅ Generated AccessToken: {}", accessToken_hiswork);
+//
+//        // JWT 토큰과 사용자 정보 반환
+//        return AuthDto.builder()
+//                .token(accessToken_hiswork) // JWT 토큰
+//                .uniqueId(loggedInUser.getUniqueId())
+//                .name(loggedInUser.getName())
+//                .email(loggedInUser.getEmail()) // 편집자/검토자 찾을 때 필요할 것 같아서 추가
+//                .department(loggedInUser.getDepartment())
+//                .build();
+//    }
+
+//    // AccessToken 생성
+//    public String createAccessToken(String uniqueId, String name, String department) {
+//        Key key = JwtUtil.getSigningKey(SECRET_KEY);
+//        return JwtUtil.createToken(uniqueId, name, department, key);
+//    }
+//
+//    // RefreshToken 생성
+//    public String createRefreshToken(String uniqueId, String name, String department) {
+//        Key key = JwtUtil.getSigningKey(SECRET_KEY);
+//        return JwtUtil.createRefreshToken(uniqueId, name, key);
+//    }
 
 } 

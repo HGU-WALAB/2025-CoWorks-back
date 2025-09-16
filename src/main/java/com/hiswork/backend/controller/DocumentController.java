@@ -18,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.nio.file.Files;
@@ -151,7 +152,8 @@ public class DocumentController {
             User user = getCurrentUser(httpRequest);
             
             log.info("검토자 할당 요청 - 문서 ID: {}, 검토자: {}, 요청자: {}", 
-                    id, reviewerEmail, user.getId());
+//                    id, reviewerEmail, user.getId());
+                    id, reviewerEmail, user.getEmail());
             
             Document document = documentService.assignReviewer(id, reviewerEmail, user);
             log.info("Reviewer assigned successfully to document {}", id);
@@ -355,32 +357,14 @@ public class DocumentController {
             
             // JWT 토큰에서 사용자 정보 추출 시도
             User user = authUtil.getCurrentUser(request);
-            log.info("JWT 토큰에서 추출된 사용자: {} ({})", user.getName(), user.getId());
+//            log.info("JWT 토큰에서 추출된 사용자: {} ({})", user.getName(), user.getId());
+            log.info("JWT 토큰에서 추출된 사용자: {} ({})", user.getName(), user.getEmail());
             return user;
         } catch (Exception e) {
             log.error("JWT 토큰 추출 실패: {}", e.getMessage(), e);
-            log.warn("JWT 토큰 추출 실패, 기본 사용자 사용: {}", e.getMessage());
-            // 개발 환경용 fallback: 기본 사용자 사용
-            return getUserOrCreate("test@example.com", "Test User", "1234", "교직원");
-        }
-    }
-    
-    private User getUserOrCreate(String email, String defaultName, String defaultPassword, String defaultPosition) {
-        try {
-            return userRepository.findByEmail(email)
-                    .orElseGet(() -> {
-                        log.info("Creating new user: {}", email);
-                        User newUser = User.builder()
-                                .name(defaultName)
-                                .email(email)
-                                .position(Position.교직원)
-                                .role(Role.USER)
-                                .build();
-                        return userRepository.save(newUser);
-                    });
-        } catch (Exception e) {
-            log.error("Error getting or creating user {}", email, e);
-            throw e;
+            log.warn("JWT 토큰 추출 실패, 인증이 필요합니다: {}", e.getMessage());
+            // 인증이 필요한 상황에서는 예외를 던져서 클라이언트가 로그인하도록 유도
+            throw new RuntimeException("인증이 필요합니다. 로그인 후 다시 시도해주세요.");
         }
     }
 } 

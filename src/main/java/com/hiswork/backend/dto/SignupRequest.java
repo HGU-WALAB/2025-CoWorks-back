@@ -20,16 +20,16 @@ public class SignupRequest {
     @NotBlank(message = "이름은 필수입니다")
     private String name;
     
-    @NotBlank(message = "직분은 필수입니다")
-    private String position;
+   @NotBlank(message = "직분은 필수입니다")
+   private String position;
     
     // Position enum 값 검증을 위한 메서드
-    public boolean isValidPosition() {
-        try {
-            Position.valueOf(position);
-            return true;
-        } catch (IllegalArgumentException e) {
-            return false;
-        }
-    }
+   public boolean isValidPosition() {
+       try {
+           Position.valueOf(position);
+           return true;
+       } catch (IllegalArgumentException e) {
+           return false;
+       }
+   }
 } 
