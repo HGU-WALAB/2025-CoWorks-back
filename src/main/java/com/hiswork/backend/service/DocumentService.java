@@ -18,6 +18,7 @@ import com.hiswork.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import com.hiswork.backend.domain.Position;
 import com.hiswork.backend.domain.Role;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,6 +42,7 @@ public class DocumentService {
     private final TasksLogRepository tasksLogRepository;
     private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
+    private final PasswordEncoder passwordEncoder; // 추가
     
     public Document createDocument(Long templateId, User creator, String editorEmail) {
         Template template = templateRepository.findById(templateId)
@@ -272,7 +274,7 @@ public class DocumentService {
     public Document assignReviewer(Long documentId, String reviewerEmail, User assignedBy) {
         log.info("검토자 할당 요청 - 문서 ID: {}, 검토자 이메일: {}, 요청자: {}", 
                 documentId, reviewerEmail, assignedBy.getId());
-        
+
         Document document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new RuntimeException("Document not found"));
         
@@ -366,6 +368,7 @@ public class DocumentService {
                     User newUser = User.builder()
                             .name(defaultName)
                             .email(email)
+                            .password(passwordEncoder.encode("defaultPassword123"))
                             .position(Position.교직원)
                             .role(Role.USER)
                             .build();

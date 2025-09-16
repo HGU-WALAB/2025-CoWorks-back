@@ -1,5 +1,6 @@
 package com.hiswork.backend.dto;
 
+import com.hiswork.backend.domain.User;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -11,12 +12,12 @@ public class LoginResponse {
     private String userName;
     private String department;
 
-    public static LoginResponse from(AuthDto authDto) {
-        return LoginResponse.builder()
-                .token(authDto.getToken())
-                .userId(authDto.getUniqueId())
-                .userName(authDto.getName())
-                .department(authDto.getDepartment())
-                .build();
-    }
+//    public static LoginResponse from(AuthDto authDto) {
+//        return LoginResponse.builder()
+//                .token(authDto.getToken())
+//                .userId(authDto.getUniqueId())
+//                .userName(authDto.getName())
+//                .department(authDto.getDepartment())
+//                .build();
+//    }
 }

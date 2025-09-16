@@ -2,10 +2,7 @@ package com.hiswork.backend.domain;
 
 import com.hiswork.backend.dto.AuthDto;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.hibernate.annotations.GenericGenerator;
 import java.util.UUID;
 
@@ -15,6 +12,7 @@ import java.util.UUID;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
+@Data
 public class User {
     
     @Id
@@ -23,9 +21,13 @@ public class User {
     @Column(columnDefinition = "UUID")
     private UUID id;
 
-    // 학번
-    @Column(name = "unique_id", nullable = false, length = 50)
-    private String uniqueId;
+//     학번
+     @Column(name = "unique_id", nullable = true, length = 50)
+     private String uniqueId;
+
+    // test용 password
+    @Column(name = "password", length = 100)
+    private String password;
 
     // 이름
     @Column(name = "name", nullable = false, length = 50)
@@ -56,14 +58,15 @@ public class User {
     private String major2;
 
     // 역할 (USER, ADMIN)
-    @Enumerated(EnumType.STRING)
-    @Column(name = "role", nullable = false)
-    private Role role;
+   @Enumerated(EnumType.STRING)
+   @Column(name = "role", nullable = false)
+   private Role role;
 
-    // 직책 (교직원, 교수, 학생, 연구원, 행정직원, 기타)
-    @Enumerated(EnumType.STRING)
-    @Column(name = "position", nullable = false)
-    private Position position;
+   // 직책 (교직원, 교수, 학생, 연구원, 행정직원, 기타)
+   @Enumerated(EnumType.STRING)
+   @Column(name = "position", nullable = false)
+   private Position position;
+
 
     // 프로필 이미지 URL
     private String profileImageUrl;
@@ -74,7 +77,7 @@ public class User {
 
     public static User from(AuthDto dto) {
         return User.builder()
-                .uniqueId(dto.getUniqueId())
+//                .uniqueId(dto.getUniqueId())
                 .name(dto.getName())
                 .email(dto.getEmail())
                 .department(dto.getDepartment())
@@ -82,8 +85,8 @@ public class User {
                 .major2(dto.getMajor2())
                 .grade(dto.getGrade())
                 .semester(dto.getSemester())
-                .role(Role.USER) // 기본 상태를 USER로 설정
-                .position(Position.학생) // 기본값을 학생으로 설정
+               .role(Role.USER) // 기본 상태를 USER로 설정
+               .position(Position.학생) // 기본값을 학생으로 설정
                 .build();
     }
 }
