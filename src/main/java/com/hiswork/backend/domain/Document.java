@@ -48,6 +48,12 @@ public class Document {
     
     private LocalDateTime deadline;
     
+    // 소속 폴더 (선택적 - null일 수 있음)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "folder_id")
+    @JsonIgnore
+    private Folder folder;
+    
     @OneToMany(mappedBy = "document", cascade = CascadeType.ALL)
     @JsonIgnore
     @Builder.Default
