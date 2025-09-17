@@ -12,22 +12,22 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class AuthResponse {
+public class SignUpResponse {
     private UUID id;
     private String email;
     private String name;
     private String position;
     private String role;
     private String token;
-    
-    public static AuthResponse from(User user, String token) {
-        return AuthResponse.builder()
+
+    public static SignUpResponse from(User user, String token) {
+        return SignUpResponse.builder()
                 .id(user.getId())
                 .email(user.getEmail())
                 .name(user.getName())
                 .position(user.getPosition() != null ? user.getPosition().name() : null)
-                .role(user.getRole().name())
+                .role(user.getRole() != null ? user.getRole().name() : null)
                 .token(token)
                 .build();
     }
-} 
+}

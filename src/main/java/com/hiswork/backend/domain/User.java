@@ -1,24 +1,18 @@
 package com.hiswork.backend.domain;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.hiswork.backend.dto.AuthDto;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
+import lombok.*;
 import org.hibernate.annotations.GenericGenerator;
-import org.hibernate.annotations.UpdateTimestamp;
-
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
 @Table(name = "users")
-@Data
 @Builder
+@Getter
 @NoArgsConstructor
 @AllArgsConstructor
+@Data
 public class User {
     
     @Id
@@ -26,38 +20,92 @@ public class User {
     @GenericGenerator(name = "uuid2", strategy = "uuid2")
     @Column(columnDefinition = "UUID")
     private UUID id;
-    
-    @Column(unique = true, nullable = false)
-    private String email;
-    
-    @Column(nullable = false)
-    @JsonIgnore
+
+//     학번
+     @Column(name = "unique_id", nullable = true, length = 50)
+     private String uniqueId;
+
+    // test용 password
+    @Column(name = "password", length = 100)
     private String password;
-    
-    @Column(nullable = false)
+
+    // 이름
+    @Column(name = "name", nullable = false, length = 50)
     private String name;
-    
-    @Enumerated(EnumType.STRING)
-    private Position position;
-    
-    private String profileImage;
-    
-    @Enumerated(EnumType.STRING)
-    private Role role;
-    
+
+    // 이메일
+    @Column(name = "email", length = 320)
+    private String email;
+
+    // 학년
+    @Column(name = "grade")
+    private Integer grade;
+
+    // 학기
+    @Column(name = "semester")
+    private Integer semester;
+
+    // 학과
+    @Column(name = "department", length = 50)
+    private String department;
+
+    // 전공1
+    @Column(name = "major1", length = 50)
+    private String major1;
+
+    // 전공2
+    @Column(name = "major2", length = 50)
+    private String major2;
+
+    // 역할 (USER, ADMIN)
+   @Enumerated(EnumType.STRING)
+   @Column(name = "role", nullable = false)
+   private Role role;
+
+   // 직책 (교직원, 교수, 학생, 연구원, 행정직원, 기타)
+   @Enumerated(EnumType.STRING)
+   @Column(name = "position", nullable = false)
+   private Position position;
+
+
+    // 프로필 이미지 URL
+    private String profileImageUrl;
+
+    // 서명 이미지 URL
     private String signatureImageUrl;
-    
-    @CreationTimestamp
-    private LocalDateTime createdAt;
-    
-    @UpdateTimestamp
-    private LocalDateTime updatedAt;
-    
-    public enum Role {
-        ADMIN, USER
+
+    // 폴더 접근 권한
+    @Column(name = "has_folder_access", nullable = false)
+    @Builder.Default
+    private Boolean hasFolderAccess = false;
+
+
+    public static User from(AuthDto dto) {
+        return User.builder()
+//                .uniqueId(dto.getUniqueId())
+                .name(dto.getName())
+                .email(dto.getEmail())
+                .department(dto.getDepartment())
+                .major1(dto.getMajor1())
+                .major2(dto.getMajor2())
+                .grade(dto.getGrade())
+                .semester(dto.getSemester())
+               .role(Role.USER) // 기본 상태를 USER로 설정
+               .position(Position.학생) // 기본값을 학생으로 설정
+                .build();
     }
-    
-    public enum Position {
-        교직원, 교수, 학생, 연구원, 행정직원, 기타
+
+    // 폴더 접근 권한 확인 헬퍼 메서드
+    public boolean canAccessFolders() {
+        return Boolean.TRUE.equals(this.hasFolderAccess);
     }
-} 
+
+    // 폴더 접근 권한 부여/해제 메서드
+    public void grantFolderAccess() {
+        this.hasFolderAccess = true;
+    }
+
+    public void revokeFolderAccess() {
+        this.hasFolderAccess = false;
+    }
+}

@@ -59,7 +59,7 @@ public class DocumentResponse {
         private Long id;
         private String role;
         private String assignedUserName;
-        private String assignedUserEmail;
+        private String assignedUserId;
         private Boolean canAssignReviewer; // 검토자 지정 권한
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
@@ -69,7 +69,7 @@ public class DocumentResponse {
                     .id(documentRole.getId())
                     .role(documentRole.getTaskRole().name())
                     .assignedUserName(documentRole.getAssignedUser().getName())
-                    .assignedUserEmail(documentRole.getAssignedUser().getEmail())
+                    .assignedUserId(documentRole.getAssignedUser().getId().toString())
                     .canAssignReviewer(documentRole.getCanAssignReviewer())
                     .createdAt(documentRole.getCreatedAt())
                     .updatedAt(documentRole.getUpdatedAt())
