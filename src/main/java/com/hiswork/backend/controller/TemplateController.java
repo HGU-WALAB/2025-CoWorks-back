@@ -2,6 +2,7 @@ package com.hiswork.backend.controller;
 
 import com.hiswork.backend.domain.Template;
 import com.hiswork.backend.domain.User;
+import com.hiswork.backend.domain.Folder;
 import com.hiswork.backend.domain.Position;
 import com.hiswork.backend.domain.Role;
 import com.hiswork.backend.dto.TemplateCreateRequest;
@@ -9,6 +10,7 @@ import com.hiswork.backend.dto.TemplateResponse;
 import com.hiswork.backend.service.TemplateService;
 import com.hiswork.backend.service.PdfService;
 import com.hiswork.backend.repository.UserRepository;
+import com.hiswork.backend.repository.FolderRepository;
 import com.hiswork.backend.util.AuthUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -21,6 +23,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @RestController
@@ -33,6 +36,7 @@ public class TemplateController {
     private final TemplateService templateService;
     private final PdfService pdfService;
     private final UserRepository userRepository;
+    private final FolderRepository folderRepository;
     private final AuthUtil authUtil;
     
 //    @PostMapping
@@ -70,6 +74,7 @@ public class TemplateController {
             @RequestParam(value = "description", required = false) String description,
             @RequestParam(value = "isPublic", defaultValue = "false") Boolean isPublic,
             @RequestParam(value = "coordinateFields", required = false) String coordinateFields,
+            @RequestParam(value = "defaultFolderId", required = false) String defaultFolderId,
             HttpServletRequest httpRequest) {
         
         try {
@@ -77,6 +82,20 @@ public class TemplateController {
             
             // PDF 파일 업로드 및 이미지 변환
             PdfService.PdfUploadResult uploadResult = pdfService.uploadPdfTemplate(file);
+            
+            // 기본 폴더 처리
+            Folder defaultFolder = null;
+            if (defaultFolderId != null && !defaultFolderId.trim().isEmpty()) {
+                try {
+                    UUID folderId = UUID.fromString(defaultFolderId);
+                    defaultFolder = folderRepository.findById(folderId).orElse(null);
+                    if (defaultFolder == null) {
+                        log.warn("지정된 폴더를 찾을 수 없습니다: {}", defaultFolderId);
+                    }
+                } catch (IllegalArgumentException e) {
+                    log.warn("잘못된 폴더 ID 형식: {}", defaultFolderId);
+                }
+            }
             
             // PDF 기반 템플릿 생성
             Template template = Template.builder()
@@ -86,6 +105,7 @@ public class TemplateController {
                     .pdfFilePath(uploadResult.getPdfFilePath())
                     .pdfImagePath(uploadResult.getPdfImagePath())
                     .coordinateFields(coordinateFields)  // coordinateFields 추가
+                    .defaultFolder(defaultFolder)  // 기본 폴더 추가
                     .createdBy(user)
                     .build();
             
