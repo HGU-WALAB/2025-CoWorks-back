@@ -46,7 +46,7 @@ public class DocumentService {
     private final ObjectMapper objectMapper;
     private final PasswordEncoder passwordEncoder;
   
-    public Document createDocument(Long templateId, User creator, String editorEmail) {
+    public Document createDocument(Long templateId, User creator, String editorEmail, String title) {
         Template template = templateRepository.findById(templateId)
                 .orElseThrow(() -> new RuntimeException("Template not found"));
         
@@ -55,6 +55,7 @@ public class DocumentService {
         
         Document document = Document.builder()
                 .template(template)
+                .title(title)
                 .data(initialData)
                 .status(Document.DocumentStatus.DRAFT)
                 .build();

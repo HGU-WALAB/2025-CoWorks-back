@@ -56,7 +56,8 @@ public class DocumentController {
             Document document = documentService.createDocument(
                     request.getTemplateId(), 
                     creator, 
-                    request.getEditorEmail()
+                    request.getEditorEmail(),
+                    request.getTitle()
             );
             
             log.info("Document created successfully with ID: {}", document.getId());
