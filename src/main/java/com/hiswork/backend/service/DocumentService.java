@@ -58,6 +58,7 @@ public class DocumentService {
                 .title(title)
                 .data(initialData)
                 .status(Document.DocumentStatus.DRAFT)
+                .folder(template.getDefaultFolder())  // 템플릿의 기본 폴더 적용
                 .build();
         
         document = documentRepository.save(document);

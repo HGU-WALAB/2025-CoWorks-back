@@ -21,6 +21,8 @@ public class TemplateResponse {
     private String pdfFilePath;
     private String pdfImagePath;
     private String coordinateFields;  // 추가
+    private UUID defaultFolderId;  // 기본 폴더 ID
+    private String defaultFolderName;  // 기본 폴더 이름
     private UUID createdById;
     private String createdByName;
     private LocalDateTime createdAt;
@@ -35,6 +37,8 @@ public class TemplateResponse {
                 .pdfFilePath(template.getPdfFilePath())
                 .pdfImagePath(template.getPdfImagePath())
                 .coordinateFields(template.getCoordinateFields())  // 추가
+                .defaultFolderId(template.getDefaultFolder() != null ? template.getDefaultFolder().getId() : null)
+                .defaultFolderName(template.getDefaultFolder() != null ? template.getDefaultFolder().getName() : null)
                 .createdById(template.getCreatedBy().getId())
                 .createdByName(template.getCreatedBy().getName())
                 .createdAt(template.getCreatedAt())

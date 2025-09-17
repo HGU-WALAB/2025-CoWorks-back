@@ -6,6 +6,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.UUID;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -24,4 +26,6 @@ public class TemplateCreateRequest {
     private String pdfImagePath;
     
     private String coordinateFields; // JSON 형태의 좌표 필드 정보
+    
+    private UUID defaultFolderId; // 기본 폴더 ID (선택적)
 } 
