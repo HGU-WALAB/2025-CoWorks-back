@@ -53,7 +53,22 @@ public class FolderService {
     public List<FolderResponse> getFolderTree(User user) {
         checkFolderAccess(user);
         
-        List<Folder> rootFolders = folderRepository.findRootFoldersWithChildren();
+        // 모든 폴더를 한 번에 가져오기
+        List<Folder> allFolders = folderRepository.findAllFoldersForTree();
+        
+        // 각 폴더의 children 설정 (메모리에서 트리 구조 구성)
+        allFolders.forEach(folder -> {
+            List<Folder> children = allFolders.stream()
+                    .filter(f -> folder.getId().equals(f.getParent() != null ? f.getParent().getId() : null))
+                    .collect(Collectors.toList());
+            folder.setChildren(children);
+        });
+        
+        // 루트 폴더들만 반환
+        List<Folder> rootFolders = allFolders.stream()
+                .filter(folder -> folder.getParent() == null)
+                .collect(Collectors.toList());
+        
         return rootFolders.stream()
                 .map(FolderResponse::fromWithChildren)
                 .collect(Collectors.toList());

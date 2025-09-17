@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -91,7 +92,7 @@ public class FolderController {
      */
     @PostMapping
     @RequireFolderAccess
-    public ResponseEntity<FolderResponse> createFolder(
+    public ResponseEntity<?> createFolder(
             @RequestBody FolderCreateRequest request,
             HttpServletRequest httpRequest) {
         try {
@@ -101,9 +102,11 @@ public class FolderController {
         } catch (IllegalArgumentException e) {
             log.error("폴더 생성 실패: {}", e.getMessage());
             if (e.getMessage().contains("권한")) {
-                return ResponseEntity.status(403).build();
+                return ResponseEntity.status(403)
+                        .body(Map.of("message", e.getMessage()));
             }
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest()
+                    .body(Map.of("message", e.getMessage()));
         }
     }
     
@@ -113,7 +116,7 @@ public class FolderController {
      */
     @PutMapping("/{id}")
     @RequireFolderAccess
-    public ResponseEntity<FolderResponse> updateFolder(
+    public ResponseEntity<?> updateFolder(
             @PathVariable UUID id,
             @RequestBody FolderUpdateRequest request,
             HttpServletRequest httpRequest) {
@@ -124,12 +127,15 @@ public class FolderController {
         } catch (IllegalArgumentException e) {
             log.error("폴더 수정 실패: {}", e.getMessage());
             if (e.getMessage().contains("권한")) {
-                return ResponseEntity.status(403).build();
+                return ResponseEntity.status(403)
+                        .body(Map.of("message", e.getMessage()));
             }
             if (e.getMessage().contains("찾을 수 없습니다")) {
-                return ResponseEntity.notFound().build();
+                return ResponseEntity.status(404)
+                        .body(Map.of("message", e.getMessage()));
             }
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest()
+                    .body(Map.of("message", e.getMessage()));
         }
     }
     
@@ -270,14 +276,14 @@ public class FolderController {
      */
     @PutMapping("/documents/{documentId}/move")
     @RequireFolderAccess
-    public ResponseEntity<Void> moveDocument(
+    public ResponseEntity<?> moveDocument(
             @PathVariable Long documentId,
             @RequestBody DocumentMoveRequest request,
             HttpServletRequest httpRequest) {
         try {
             User user = authUtil.getCurrentUser(httpRequest);
-            if (request.getFolderId() != null) {
-                folderService.moveDocumentToFolder(documentId, request.getFolderId(), user);
+            if (request.getTargetFolderId() != null) {
+                folderService.moveDocumentToFolder(documentId, request.getTargetFolderId(), user);
             } else {
                 folderService.removeDocumentFromFolder(documentId, user);
             }
@@ -285,9 +291,11 @@ public class FolderController {
         } catch (IllegalArgumentException e) {
             log.error("문서 이동 실패: {}", e.getMessage());
             if (e.getMessage().contains("권한")) {
-                return ResponseEntity.status(403).build();
+                return ResponseEntity.status(403)
+                        .body(Map.of("message", e.getMessage()));
             }
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.status(404)
+                    .body(Map.of("message", e.getMessage()));
         }
     }
 }

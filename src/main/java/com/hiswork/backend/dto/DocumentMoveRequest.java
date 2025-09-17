@@ -13,5 +13,5 @@ import java.util.UUID;
 @AllArgsConstructor
 public class DocumentMoveRequest {
     
-    private UUID folderId; // null이면 폴더에서 제거 (미분류로 이동)
+    private UUID targetFolderId; // null이면 폴더에서 제거 (미분류로 이동)
 }
