@@ -3,6 +3,7 @@ package com.hiswork.backend.dto;
 import com.hiswork.backend.domain.User;
 import lombok.*;
 
+import java.time.ZonedDateTime;
 import java.util.List;
 
 public class MailRequest {
@@ -29,5 +30,32 @@ public class MailRequest {
         private List<FailureRow> failureRows;
         private String retryLink;
         private String dashboardLink;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class EditorAssignmentEmailCommand {
+        String projectName;
+        String documentTitle;
+        String creatorName;
+        String editorEmail;
+        String editorName;
+        ZonedDateTime dueDate;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ReviewerAssignmentEmailCommand {
+        String projectName;
+        String documentTitle;
+        String editorName;
+        String reviewerEmail;
+        String reviewerName;
+        String reviewScope;
+        ZonedDateTime reviewDueDate;
     }
 }
