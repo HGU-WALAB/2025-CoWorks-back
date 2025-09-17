@@ -10,6 +10,7 @@ import com.hiswork.backend.domain.Template;
 import com.hiswork.backend.domain.TasksLog;
 import com.hiswork.backend.domain.User;
 import com.hiswork.backend.dto.DocumentUpdateRequest;
+import com.hiswork.backend.dto.MailRequest;
 import com.hiswork.backend.repository.DocumentRepository;
 import com.hiswork.backend.repository.DocumentRoleRepository;
 import com.hiswork.backend.repository.TemplateRepository;
@@ -33,7 +34,8 @@ import org.slf4j.LoggerFactory;
 public class DocumentService {
     
     private static final Logger log = LoggerFactory.getLogger(DocumentService.class);
-    
+
+    private final MailService mailService;
     private final DocumentRepository documentRepository;
     private final TemplateRepository templateRepository;
     private final DocumentRoleRepository documentRoleRepository;
@@ -41,7 +43,7 @@ public class DocumentService {
     private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
     private final PasswordEncoder passwordEncoder;
-    
+
     public Document createDocument(Long templateId, User creator, String editorEmail) {
         Template template = templateRepository.findById(templateId)
                 .orElseThrow(() -> new RuntimeException("Template not found"));
@@ -77,10 +79,12 @@ public class DocumentService {
                 .build();
         
         tasksLogRepository.save(creatorTask);
+
+        User editor = null;
         
         // 편집자가 지정된 경우 편집자 역할 할당
         if (editorEmail != null && !editorEmail.trim().isEmpty()) {
-            User editor = getUserOrCreate(editorEmail, "Editor User");
+            editor = getUserOrCreate(editorEmail, "Editor User");
             
             DocumentRole editorRole = DocumentRole.builder()
                     .document(document)
@@ -105,7 +109,16 @@ public class DocumentService {
             document.setStatus(Document.DocumentStatus.EDITING);
             document = documentRepository.save(document);
         }
-        
+
+        mailService.sendAssignEditorNotification(MailRequest.EditorAssignmentEmailCommand.builder()
+                        .documentTitle(template.getName())
+                        .creatorName(creator.getName())
+                        .editorEmail(editorEmail)
+                        .editorName(editor != null ? editor.getName() : "미지정")
+                        .dueDate(document.getDeadline() != null ? document.getDeadline().atZone(java.time.ZoneId.systemDefault()) : null)
+                        .projectName("Hiswork")
+                .build());
+
         return document;
     }
     
@@ -141,11 +154,7 @@ public class DocumentService {
         
         // 권한 확인 - 편집자만 수정 가능 (생성자는 편집 불가)
         if (!isEditor(document, user)) {
-            if (isCreator(document, user)) {
-                throw new RuntimeException("생성자는 문서를 편집할 수 없습니다. 편집자에게 할당해주세요.");
-            } else {
-                throw new RuntimeException("문서를 수정할 권한이 없습니다");
-            }
+            throw new RuntimeException("문서를 수정할 권한이 없습니다");
         }
         
         // 문서 데이터 업데이트
@@ -161,7 +170,7 @@ public class DocumentService {
                 .build();
         
         tasksLogRepository.save(updateLog);
-        
+
         return document;
     }
     
@@ -231,12 +240,7 @@ public class DocumentService {
     public Document assignEditor(Long documentId, String editorEmail, User assignedBy) {
         Document document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new RuntimeException("Document not found"));
-        
-        // 생성자만 편집자 할당 가능
-        if (!isCreator(document, assignedBy)) {
-            throw new RuntimeException("편집자를 할당할 권한이 없습니다");
-        }
-        
+
         User editor = getUserOrCreate(editorEmail, "Editor User");
         
         // 기존 편집자 역할이 있다면 제거
@@ -328,6 +332,15 @@ public class DocumentService {
                 .build();
         
         tasksLogRepository.save(reviewerTask);
+
+        mailService.sendAssignReviewerNotification(MailRequest.ReviewerAssignmentEmailCommand.builder()
+                        .documentTitle(document.getTemplate().getName()) // 문서 제목도 관리 해야함.
+                        .editorName(assignedBy.getName())
+                        .reviewerEmail(reviewerEmail)
+                        .reviewerName(reviewer.getName())
+                        .reviewDueDate(document.getDeadline() != null ? document.getDeadline().atZone(java.time.ZoneId.systemDefault()) : null)
+                        .projectName("Hiswork") // 프로젝트 이름 따로 관리해야할듯. 지금은 고정값
+                .build());
         
         return document;
     }
@@ -383,21 +396,15 @@ public class DocumentService {
         log.info("문서 정보 - ID: {}, 상태: {}, 템플릿 ID: {}", 
                 document.getId(), document.getStatus(), document.getTemplate().getId());
         
-        // 편집자만 편집 완료 가능 (생성자는 편집 불가)
+        // 편집자만 편집 완료 가능
         boolean isEditor = isEditor(document, user);
-        boolean isCreator = isCreator(document, user);
-        log.info("권한 확인 - isEditor: {}, isCreator: {}", isEditor, isCreator);
         
         if (!isEditor) {
-            if (isCreator) {
-                throw new RuntimeException("생성자는 문서를 편집할 수 없습니다. 편집자에게 할당해주세요.");
-            } else {
-                throw new RuntimeException("편집을 완료할 권한이 없습니다");
-            }
+            throw new RuntimeException("편집을 완료할 권한이 없습니다");
         }
         
         // 현재 상태가 EDITING이어야 함
-        if (document.getStatus() != Document.DocumentStatus.EDITING) {
+        if (document.getStatus() != Document.DocumentStatus.EDITING && document.getStatus() != Document.DocumentStatus.REJECTED) {
             log.warn("문서 상태 오류 - 현재 상태: {}, 예상 상태: EDITING", document.getStatus());
             throw new RuntimeException("문서가 편집 상태가 아닙니다");
         }
