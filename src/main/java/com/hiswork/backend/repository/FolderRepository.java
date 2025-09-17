@@ -46,9 +46,16 @@ public interface FolderRepository extends JpaRepository<Folder, UUID> {
     
     /**
      * 폴더 계층 구조를 포함한 조회 (N+1 문제 해결)
+     * 모든 폴더를 가져와서 메모리에서 트리 구조를 구성
      */
-    @Query("SELECT f FROM Folder f LEFT JOIN FETCH f.children WHERE f.parent IS NULL ORDER BY f.name")
-    List<Folder> findRootFoldersWithChildren();
+    @Query("SELECT f FROM Folder f ORDER BY f.name")
+    List<Folder> findAllFoldersForTree();
+    
+    /**
+     * 루트 폴더만 조회 (트리 구성용)
+     */
+    @Query("SELECT f FROM Folder f WHERE f.parent IS NULL ORDER BY f.name")
+    List<Folder> findRootFoldersForTree();
     
     /**
      * 특정 폴더의 전체 하위 폴더 개수 조회

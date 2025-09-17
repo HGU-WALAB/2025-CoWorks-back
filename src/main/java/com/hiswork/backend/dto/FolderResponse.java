@@ -50,7 +50,7 @@ public class FolderResponse {
         FolderResponse response = from(folder);
         response.setChildren(
                 folder.getChildren().stream()
-                        .map(FolderResponse::from)
+                        .map(FolderResponse::fromWithChildren)  // 재귀적으로 하위 폴더도 children 포함
                         .collect(Collectors.toList())
         );
         return response;
