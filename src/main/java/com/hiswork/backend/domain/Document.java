@@ -32,6 +32,8 @@ public class Document {
     @JoinColumn(name = "template_id", nullable = false)
     @JsonIgnore
     private Template template;
+
+    private String title;
     
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")

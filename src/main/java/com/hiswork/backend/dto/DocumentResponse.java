@@ -20,6 +20,7 @@ public class DocumentResponse {
     private Long id;
     private Long templateId;
     private String templateName;
+    private String title;
     private JsonNode data;
     private String status;
     private LocalDateTime createdAt;
@@ -41,6 +42,7 @@ public class DocumentResponse {
                 .id(document.getId())
                 .templateId(document.getTemplate().getId())
                 .templateName(document.getTemplate().getName())
+                .title(document.getTitle())
                 .data(document.getData())
                 .status(document.getStatus().name())
                 .createdAt(document.getCreatedAt())
