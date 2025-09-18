@@ -37,7 +37,7 @@ public class DocumentHistoryResponse {
                 .build();
     }
     
-    public static DocumentHistoryResponse from(TasksLog tasksLog, Map<UUID, DocumentRole.TaskRole> userRoleMap) {
+    public static DocumentHistoryResponse from(TasksLog tasksLog, Map<String, DocumentRole.TaskRole> userRoleMap) {
         return DocumentHistoryResponse.builder()
                 .id(tasksLog.getId())
                 .status(tasksLog.getStatus().name())
@@ -75,7 +75,7 @@ public class DocumentHistoryResponse {
         }
     }
     
-    private static String getDescriptionFromStatusWithRole(TasksLog.TaskStatus status, User assignedBy, User assignedUser, Map<UUID, DocumentRole.TaskRole> userRoleMap) {
+    private static String getDescriptionFromStatusWithRole(TasksLog.TaskStatus status, User assignedBy, User assignedUser, Map<String, DocumentRole.TaskRole> userRoleMap) {
         switch (status) {
             case PENDING:
                 String assignedByRole = getRoleDisplayName(userRoleMap.get(assignedBy.getId()));

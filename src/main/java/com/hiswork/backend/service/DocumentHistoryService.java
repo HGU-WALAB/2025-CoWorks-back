@@ -49,9 +49,9 @@ public class DocumentHistoryService {
         
         // 문서의 역할 정보 조회 (사용자별 역할 매핑)
         List<DocumentRole> documentRoles = documentRoleRepository.findByDocumentId(documentId);
-        Map<UUID, DocumentRole.TaskRole> userRoleMap = documentRoles.stream()
+        Map<String, DocumentRole.TaskRole> userRoleMap = documentRoles.stream()
                 .collect(Collectors.toMap(
-                        role -> role.getAssignedUser().getId(),
+                        role -> role.getAssignedUser().getEmail(),
                         DocumentRole::getTaskRole
                 ));
         

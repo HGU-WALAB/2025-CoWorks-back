@@ -334,7 +334,7 @@ public class DocumentService {
                 .assignedUser(reviewer)
                 .status(TasksLog.TaskStatus.PENDING)
                 .build();
-        
+
         tasksLogRepository.save(reviewerTask);
 
         mailService.sendAssignReviewerNotification(MailRequest.ReviewerAssignmentEmailCommand.builder()
@@ -345,6 +345,9 @@ public class DocumentService {
                         .reviewDueDate(document.getDeadline() != null ? document.getDeadline().atZone(java.time.ZoneId.systemDefault()) : null)
                         .projectName("Hiswork") // 프로젝트 이름 따로 관리해야할듯. 지금은 고정값
                 .build());
+
+        document.setStatus(Document.DocumentStatus.REVIEWING);
+        documentRepository.save(document);
         
         return document;
     }
@@ -446,7 +449,7 @@ public class DocumentService {
         }
         
         // 현재 상태가 READY_FOR_REVIEW이어야 함
-        if (document.getStatus() != Document.DocumentStatus.READY_FOR_REVIEW) {
+        if (document.getStatus() != Document.DocumentStatus.REVIEWING) {
             throw new RuntimeException("문서가 검토 대기 상태가 아닙니다");
         }
         
@@ -455,7 +458,7 @@ public class DocumentService {
             ObjectNode data = (ObjectNode) document.getData();
             ObjectNode signatures = data.has("signatures") ? 
                     (ObjectNode) data.get("signatures") : objectMapper.createObjectNode();
-            signatures.put(user.getId().toString(), signatureData);
+            signatures.put(user.getEmail(), signatureData);
             data.set("signatures", signatures);
             document.setData(data);
         }

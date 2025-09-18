@@ -2,8 +2,6 @@ package com.hiswork.backend.controller;
 
 import com.hiswork.backend.domain.Document;
 import com.hiswork.backend.domain.User;
-import com.hiswork.backend.domain.Position;
-import com.hiswork.backend.domain.Role;
 import com.hiswork.backend.dto.DocumentCreateRequest;
 import com.hiswork.backend.dto.DocumentHistoryResponse;
 import com.hiswork.backend.dto.DocumentResponse;
@@ -18,7 +16,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.nio.file.Files;
