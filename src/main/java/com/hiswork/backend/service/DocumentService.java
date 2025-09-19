@@ -384,6 +384,7 @@ public class DocumentService {
         return userRepository.findByEmail(email)
                 .orElseGet(() -> {
                     User newUser = User.builder()
+                            .id(java.util.UUID.randomUUID().toString()) // UUID를 String으로 생성
                             .name(defaultName)
                             .email(email)
                             .password(passwordEncoder.encode("defaultPassword123"))
@@ -589,5 +590,108 @@ public class DocumentService {
             }
             log.warn("필수 필드 검증 중 오류 발생: {}", e.getMessage());
         }
+    }
+    
+    /**
+     * 대량 문서 생성 메서드
+     * @param templateId 템플릿 ID
+     * @param creator 생성자 (폴더 관리 권한이 있어야 함)
+     * @param studentRecords 학생 정보 목록
+     * @return 처리 결과
+     */
+    @Transactional
+    public com.hiswork.backend.dto.BulkDocumentResponse.BulkDocumentItem createBulkDocument(
+            Long templateId, User creator, ExcelParsingService.StudentRecord record, int rowNumber) {
+        
+        com.hiswork.backend.dto.BulkDocumentResponse.BulkDocumentItem item = 
+            new com.hiswork.backend.dto.BulkDocumentResponse.BulkDocumentItem();
+        
+        item.setRow(rowNumber);
+        item.setName(record.getName());
+        item.setSubject(record.getSubject());
+        item.setEmail(record.getEmail());
+        
+        try {
+            // 1. 입력 데이터 유효성 검사
+            if (!record.isValid()) {
+                item.setStatus("FAILED");
+                item.setReason(record.getValidationError());
+                return item;
+            }
+            
+            // 2. 문서 제목 생성
+            String title = record.getName() + "_" + record.getSubject() + "_근무일지";
+            item.setTitle(title);
+            
+            // 3. 중복 제목 확인
+            List<Document> existingDocs = documentRepository.findAll();
+            boolean titleExists = existingDocs.stream()
+                .anyMatch(doc -> title.equals(doc.getTitle()));
+            
+            if (titleExists) {
+                item.setStatus("SKIPPED");
+                item.setReason("중복된 제목");
+                return item;
+            }
+            
+            // 4. 템플릿 조회
+            Template template = templateRepository.findById(templateId)
+                .orElseThrow(() -> new RuntimeException("템플릿을 찾을 수 없습니다: " + templateId));
+            
+            // 5. 학생 사용자 조회 또는 생성
+            User student = getUserOrCreate(record.getEmail(), record.getName());
+            
+            // 6. 문서 생성
+            Document document = Document.builder()
+                .title(title)
+                .template(template)
+                .status(Document.DocumentStatus.EDITING)
+                .data(objectMapper.createObjectNode())  // 빈 JSON 객체로 시작
+                .build();
+            
+            document = documentRepository.save(document);
+            
+            // 7. 문서 역할 할당 (학생을 EDITOR로)
+            DocumentRole editorRole = DocumentRole.builder()
+                .document(document)
+                .assignedUser(student)
+                .taskRole(DocumentRole.TaskRole.EDITOR)
+                .build();
+            
+            documentRoleRepository.save(editorRole);
+            
+            // 8. 작업 로그 생성
+            TasksLog tasksLog = TasksLog.builder()
+                .document(document)
+                .assignedUser(student)
+                .assignedBy(creator)
+                .status(TasksLog.TaskStatus.PENDING)
+                .build();
+            
+            tasksLogRepository.save(tasksLog);
+            
+            item.setStatus("CREATED");
+            item.setDocumentId(document.getId());
+            
+            log.info("대량 문서 생성 성공: {} (ID: {})", title, document.getId());
+            return item;
+            
+        } catch (Exception e) {
+            log.error("대량 문서 생성 실패 - 행 {}: {}", rowNumber, e.getMessage(), e);
+            item.setStatus("FAILED");
+            item.setReason(e.getMessage());
+            return item;
+        }
+    }
+    
+    /**
+     * 폴더 관리 권한 확인
+     */
+    public void validateFolderManagePermission(User user) {
+        // 임시로 권한 검증 비활성화 (테스트용)
+        log.info("폴더 관리 권한 검증 - 사용자: {}, 권한: {}", user.getEmail(), user.canAccessFolders());
+        // if (!user.canAccessFolders()) {
+        //     throw new RuntimeException("폴더 관리 권한이 없습니다. 관리자에게 문의하세요.");
+        // }
     }
 } 

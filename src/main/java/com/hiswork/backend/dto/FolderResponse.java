@@ -21,7 +21,7 @@ public class FolderResponse {
     private String name;
     private UUID parentId;
     private String parentName;
-    private UUID createdBy;
+    private String createdBy;
     private String createdByName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

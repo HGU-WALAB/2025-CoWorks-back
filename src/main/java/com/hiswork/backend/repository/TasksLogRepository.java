@@ -5,14 +5,13 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import java.util.UUID;
 
 @Repository
 public interface TasksLogRepository extends JpaRepository<TasksLog, Long> {
     
     List<TasksLog> findByDocumentIdOrderByCreatedAtDesc(Long documentId);
     
-    List<TasksLog> findByDocumentIdAndAssignedUserIdOrderByCreatedAtDesc(Long documentId, UUID assignedUserId);
+    List<TasksLog> findByDocumentIdAndAssignedUserIdOrderByCreatedAtDesc(Long documentId, String assignedUserId);
     
-    boolean existsByDocumentIdAndAssignedUserId(Long documentId, UUID assignedUserId);
+    boolean existsByDocumentIdAndAssignedUserId(Long documentId, String assignedUserId);
 } 

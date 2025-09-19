@@ -13,8 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 // import java.security.Key;
 // import java.util.Optional;
-import java.util.UUID;
-
 @Service
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
@@ -28,7 +26,7 @@ public class AuthService {
     @Value("${jwt.secret_key}")
     private String SECRET_KEY;
 
-    public User getLoginUser(UUID id) {
+    public User getLoginUser(String id) {
         return userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다"));
     }
@@ -51,6 +49,7 @@ public class AuthService {
         }
 
         User user = User.builder()
+                .id(java.util.UUID.randomUUID().toString()) // UUID를 String으로 생성
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .name(request.getName())

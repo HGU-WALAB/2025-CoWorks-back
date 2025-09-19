@@ -44,8 +44,8 @@ public class UserController {
             // 민감한 정보 제외하고 반환
             List<Map<String, Object>> result = users.stream()
                     .map(user -> {
-                        Map<String, Object> userMap = Map.of(
-                                "id", user.getId().toString(),
+                          Map<String, Object> userMap = Map.of(
+                                  "id", user.getId(),
                                 "email", user.getEmail() != null ? user.getEmail() : "",
                                 "name", user.getName(),
                                 "position", user.getPosition() != null ? user.getPosition().name() : ""
