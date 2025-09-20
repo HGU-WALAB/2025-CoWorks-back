@@ -1,8 +1,11 @@
 package com.hiswork.backend.service;
 
 import com.hiswork.backend.domain.User;
+import com.hiswork.backend.domain.DocumentRole;
 import com.hiswork.backend.dto.*;
 import com.hiswork.backend.repository.UserRepository;
+import com.hiswork.backend.repository.DocumentRoleRepository;
+import com.hiswork.backend.repository.TasksLogRepository;
 import com.hiswork.backend.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,6 +13,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
+import java.util.List;
 
 // import java.security.Key;
 // import java.util.Optional;
@@ -22,6 +28,8 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final DocumentRoleRepository documentRoleRepository;
+    private final TasksLogRepository tasksLogRepository;
 
     @Value("${jwt.secret_key}")
     private String SECRET_KEY;
@@ -62,12 +70,18 @@ public class AuthService {
         user = userRepository.save(user);
         log.info("사용자 데이터베이스 저장 완료 - ID: {}, 이메일: {}", user.getId(), user.getEmail());
 
+        // 임시 할당된 문서들을 실제 사용자에게 연결
+        int linkedDocuments = linkPendingDocuments(user);
+        if (linkedDocuments > 0) {
+            log.info("임시 할당된 문서 {}개를 사용자에게 연결했습니다: {}", linkedDocuments, user.getEmail());
+        }
+
         // JWT 토큰 생성
         String token = jwtUtil.generateToken(user);
         log.info("JWT 토큰 생성 완료 - 이메일: {}", user.getEmail());
 
         SignUpResponse response = SignUpResponse.from(user, token);
-        log.info("회원가입 완료 - 이메일: {}, 토큰 길이: {}", user.getEmail(), token.length());
+        log.info("회원가입 완료 - 이메일: {}, 토큰 길이: {}, 연결된 문서: {}개", user.getEmail(), token.length(), linkedDocuments);
         
         return response;
     }
@@ -87,6 +101,45 @@ public class AuthService {
         String token = jwtUtil.generateToken(user);
 
         return SignUpResponse.from(user, token);
+    }
+
+    /**
+     * 회원가입 시 임시 할당된 문서들을 실제 사용자에게 연결
+     */
+    private int linkPendingDocuments(User newUser) {
+        List<DocumentRole> pendingRoles = new ArrayList<>();
+        
+        // 이메일로 임시 할당된 문서들 검색
+        pendingRoles.addAll(documentRoleRepository.findByPendingEmail(newUser.getEmail()));
+        
+        // ID(학번)로 임시 할당된 문서들 검색
+        if (newUser.getId() != null) {
+            pendingRoles.addAll(documentRoleRepository.findByPendingUserId(newUser.getId()));
+        }
+        
+        int linkedCount = 0;
+        for (DocumentRole role : pendingRoles) {
+            // 임시 할당을 실제 사용자로 전환
+            role.setAssignedUser(newUser);
+            role.setAssignmentStatus(DocumentRole.AssignmentStatus.ACTIVE);
+            role.setPendingUserId(null);
+            role.setPendingEmail(null);
+            role.setPendingName(null);
+            
+            documentRoleRepository.save(role);
+            
+            // 관련 TasksLog도 업데이트
+            List<com.hiswork.backend.domain.TasksLog> relatedLogs = tasksLogRepository.findByDocumentIdAndAssignedUserIsNull(role.getDocument().getId());
+            for (com.hiswork.backend.domain.TasksLog log : relatedLogs) {
+                log.setAssignedUser(newUser);
+                tasksLogRepository.save(log);
+            }
+            
+            linkedCount++;
+            log.info("임시 할당 문서를 실제 사용자에게 연결: {} -> {}", role.getDocument().getTitle(), newUser.getEmail());
+        }
+        
+        return linkedCount;
     }
 
     // 히즈넷 로그인
