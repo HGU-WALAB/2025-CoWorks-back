@@ -3,9 +3,6 @@ package com.hiswork.backend.domain;
 import com.hiswork.backend.dto.AuthDto;
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.GenericGenerator;
-import java.util.UUID;
-
 @Entity
 @Table(name = "users")
 @Builder
@@ -14,16 +11,11 @@ import java.util.UUID;
 @AllArgsConstructor
 @Data
 public class User {
-    
-    @Id
-    @GeneratedValue(generator = "uuid2")
-    @GenericGenerator(name = "uuid2", strategy = "uuid2")
-    @Column(columnDefinition = "UUID")
-    private UUID id;
 
-//     학번
-     @Column(name = "unique_id", nullable = true, length = 50)
-     private String uniqueId;
+    // 학번
+    @Id
+    @Column(name = "id", length = 50)
+    private String id;
 
     // test용 password
     @Column(name = "password", length = 100)
@@ -67,7 +59,6 @@ public class User {
    @Column(name = "position", nullable = false)
    private Position position;
 
-
     // 프로필 이미지 URL
     private String profileImageUrl;
 
@@ -82,7 +73,7 @@ public class User {
 
     public static User from(AuthDto dto) {
         return User.builder()
-//                .uniqueId(dto.getUniqueId())
+                .id(java.util.UUID.randomUUID().toString()) // UUID를 String으로 생성
                 .name(dto.getName())
                 .email(dto.getEmail())
                 .department(dto.getDepartment())

@@ -29,11 +29,11 @@ public class TasksLog {
     private Document document;
     
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "assigned_by_id", nullable = false)
+    @JoinColumn(name = "assigned_by_id", nullable = true)
     private User assignedBy;
     
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "assigned_user_id", nullable = false)
+    @JoinColumn(name = "assigned_user_id", nullable = true)
     private User assignedUser;
     
     @Enumerated(EnumType.STRING)

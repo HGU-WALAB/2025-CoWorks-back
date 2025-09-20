@@ -9,6 +9,7 @@ import com.hiswork.backend.domain.DocumentRole;
 import com.hiswork.backend.domain.Template;
 import com.hiswork.backend.domain.TasksLog;
 import com.hiswork.backend.domain.User;
+import com.hiswork.backend.dto.BulkDocumentCreateResponse;
 import com.hiswork.backend.dto.DocumentUpdateRequest;
 import com.hiswork.backend.dto.MailRequest;
 import com.hiswork.backend.repository.DocumentRepository;
@@ -384,6 +385,7 @@ public class DocumentService {
         return userRepository.findByEmail(email)
                 .orElseGet(() -> {
                     User newUser = User.builder()
+                            .id(java.util.UUID.randomUUID().toString()) // UUID를 String으로 생성
                             .name(defaultName)
                             .email(email)
                             .password(passwordEncoder.encode("defaultPassword123"))
@@ -589,5 +591,201 @@ public class DocumentService {
             }
             log.warn("필수 필드 검증 중 오류 발생: {}", e.getMessage());
         }
+    }
+    
+    @Transactional
+    public BulkDocumentCreateResponse createBulkDocuments(
+            Long templateId, User creator, List<ExcelParsingService.StudentRecord> records) {
+        
+        int created = 0; // 실제로 문서가 생성된 사용자 수
+        int pending = 0; // 가입을 하지 않아 할당되지 못한 사용자 수
+        List<BulkDocumentCreateResponse.UserInfo> createdUsers = new ArrayList<>();
+        List<BulkDocumentCreateResponse.UserInfo> pendingUsers = new ArrayList<>();
+        List<BulkDocumentCreateResponse.ErrorItem> errors = new ArrayList<>();
+        
+        // 템플릿 조회
+        Template template = templateRepository.findById(templateId)
+            .orElseThrow(() -> new RuntimeException("템플릿을 찾을 수 없습니다: " + templateId));
+        
+        for (int i = 0; i < records.size(); i++) {
+            ExcelParsingService.StudentRecord record = records.get(i);
+            int rowNumber = i + 2; // Excel에서 첫 번째 행은 헤더이므로 +2
+            
+            try {
+                // 1. 입력 데이터 유효성 검사
+                if (!record.isValid()) {
+                    errors.add(BulkDocumentCreateResponse.ErrorItem.builder()
+                        .row(rowNumber)
+                        .reason(record.getValidationError())
+                        .build());
+                    continue;
+                }
+                
+                // 2. 문서 제목 생성
+                String title = record.getName() + "_" + record.getCourse() + " 근무일지";
+                
+                // 3. 중복 제목 확인
+                if (documentRepository.existsByTitle(title)) {
+                    errors.add(BulkDocumentCreateResponse.ErrorItem.builder()
+                        .row(rowNumber)
+                        .reason("중복된 제목: " + title)
+                        .build());
+                    continue;
+                }
+                
+                // 4. 사용자 검색 (이메일 또는 학번으로)
+                Optional<User> existingUser = findUserByEmailOrId(record.getEmail(), record.getStudentId());
+                
+                // 5. 문서 생성
+                Document document = Document.builder()
+                    .title(title)
+                    .template(template)
+                    .status(Document.DocumentStatus.EDITING)
+                    .data(objectMapper.createObjectNode())
+                    .build();
+                
+                document = documentRepository.save(document);
+                
+                // 6. 문서 역할 할당
+                DocumentRole.DocumentRoleBuilder roleBuilder = DocumentRole.builder()
+                    .document(document)
+                    .taskRole(DocumentRole.TaskRole.EDITOR);
+                
+                if (existingUser.isPresent()) {
+                    // 등록된 사용자 - ACTIVE 할당
+                    roleBuilder
+                        .assignedUser(existingUser.get())
+                        .assignmentStatus(DocumentRole.AssignmentStatus.ACTIVE);
+                    created++;
+                    
+                    // 생성된 사용자 정보 추가
+                    createdUsers.add(BulkDocumentCreateResponse.UserInfo.builder()
+                        .id(record.getStudentId())
+                        .name(record.getName())
+                        .email(record.getEmail())
+                        .course(record.getCourse())
+                        .build());
+                    
+                    log.info("등록된 사용자에게 문서 할당: {} -> {}", title, existingUser.get().getEmail());
+                } else {
+                    // 미등록 사용자 - PENDING 임시 할당
+                    roleBuilder
+                        .assignedUser(null)
+                        .pendingUserId(record.getStudentId())
+                        .pendingEmail(record.getEmail())
+                        .pendingName(record.getName())
+                        .assignmentStatus(DocumentRole.AssignmentStatus.PENDING)
+                        .claimStatus(DocumentRole.ClaimStatus.PENDING);
+                    pending++;
+                    
+                    // 대기 중인 사용자 정보 추가
+                    pendingUsers.add(BulkDocumentCreateResponse.UserInfo.builder()
+                        .id(record.getStudentId())
+                        .name(record.getName())
+                        .email(record.getEmail())
+                        .course(record.getCourse())
+                        .build());
+                    
+                    log.info("미등록 사용자에게 문서 임시 할당: {} -> {} ({})", title, record.getEmail(), record.getStudentId());
+                }
+                
+                DocumentRole documentRole = roleBuilder.build();
+                documentRoleRepository.save(documentRole);
+                
+                // 7. 작업 로그 생성
+                TasksLog tasksLog = TasksLog.builder()
+                    .document(document)
+                    .assignedUser(existingUser.orElse(null))
+                    .assignedBy(creator)
+                    .status(TasksLog.TaskStatus.PENDING)
+                    .build();
+                
+                tasksLogRepository.save(tasksLog);
+                
+            } catch (Exception e) {
+                log.error("문서 생성 실패 - 행 {}: {}", rowNumber, e.getMessage(), e);
+                errors.add(com.hiswork.backend.dto.BulkDocumentCreateResponse.ErrorItem.builder()
+                    .row(rowNumber)
+                    .reason(e.getMessage())
+                    .build());
+            }
+        }
+        
+        log.info("대량 문서 생성 완료 - 생성: {}, 임시할당: {}, 오류: {}", created, pending, errors.size());
+        
+        return BulkDocumentCreateResponse.builder()
+            .created(created)
+            .pending(pending)
+            .createdUsers(createdUsers)
+            .pendingUsers(pendingUsers)
+            .errors(errors)
+            .build();
+    }
+    
+    /**
+     * 이메일 또는 ID로 사용자 검색
+     */
+    private Optional<User> findUserByEmailOrId(String email, String studentId) {
+        // 먼저 이메일로 검색
+        Optional<User> userByEmail = userRepository.findByEmail(email);
+        if (userByEmail.isPresent()) {
+            return userByEmail;
+        }
+        
+        // 학번이 있으면 ID로도 검색
+        if (studentId != null && !studentId.trim().isEmpty()) {
+            return userRepository.findById(studentId);
+        }
+        
+        return Optional.empty();
+    }
+    
+    /**
+     * 회원가입 시 임시 할당된 문서들을 실제 사용자에게 연결
+     */
+    @Transactional
+    public int linkPendingDocuments(User newUser) {
+        List<DocumentRole> pendingRoles = new ArrayList<>();
+        
+        // 이메일로 임시 할당된 문서들 검색
+        pendingRoles.addAll(documentRoleRepository.findByPendingEmail(newUser.getEmail()));
+        
+        // ID(학번)로 임시 할당된 문서들 검색
+        if (newUser.getId() != null) {
+            pendingRoles.addAll(documentRoleRepository.findByPendingUserId(newUser.getId()));
+        }
+        
+        int linkedCount = 0;
+        for (DocumentRole role : pendingRoles) {
+            // 임시 할당을 실제 사용자로 전환
+            role.setAssignedUser(newUser);
+            role.setAssignmentStatus(DocumentRole.AssignmentStatus.ACTIVE);
+            role.setClaimStatus(DocumentRole.ClaimStatus.CLAIMED);
+            role.setPendingUserId(null);
+            role.setPendingEmail(null);
+            role.setPendingName(null);
+            
+            documentRoleRepository.save(role);
+            
+            // 관련 TasksLog도 업데이트
+            List<TasksLog> relatedLogs = tasksLogRepository.findByDocumentIdAndAssignedUserIsNull(role.getDocument().getId());
+            for (TasksLog log : relatedLogs) {
+                log.setAssignedUser(newUser);
+                tasksLogRepository.save(log);
+            }
+            
+            linkedCount++;
+            log.info("임시 할당 문서를 실제 사용자에게 연결: {} -> {}", role.getDocument().getTitle(), newUser.getEmail());
+        }
+        
+        return linkedCount;
+    }
+    
+     // 폴더 관리 권한 확인 (hasAccessFolders=true)
+    public void validateFolderManagePermission(User user) {
+        log.info("폴더 관리 권한 검증 - 사용자: {}, 권한: {}", user.getEmail(), user.canAccessFolders());
+         if (!user.canAccessFolders()) {
+             throw new RuntimeException("폴더 관리 권한이 없습니다. 관리자에게 문의하세요.");
+         }
     }
 } 

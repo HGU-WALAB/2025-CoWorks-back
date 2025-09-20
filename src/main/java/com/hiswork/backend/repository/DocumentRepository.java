@@ -8,13 +8,21 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import java.util.UUID;
 
 @Repository
 public interface DocumentRepository extends JpaRepository<Document, Long> {
     
-    @Query("SELECT d FROM Document d JOIN d.documentRoles dr WHERE dr.assignedUser.id = :userId ORDER BY d.createdAt DESC")
-    List<Document> findDocumentsByUserId(@Param("userId") UUID userId);
+    @Query("SELECT d FROM Document d JOIN d.documentRoles dr WHERE " +
+           "(dr.assignedUser.id = :userId AND dr.assignmentStatus = 'ACTIVE') OR " +
+           "(dr.pendingUserId = :userId AND dr.assignmentStatus = 'PENDING') " +
+           "ORDER BY d.createdAt DESC")
+    List<Document> findDocumentsByUserId(@Param("userId") String userId);
+    
+    @Query("SELECT d FROM Document d JOIN d.documentRoles dr WHERE " +
+           "(dr.assignedUser.email = :email AND dr.assignmentStatus = 'ACTIVE') OR " +
+           "(dr.pendingEmail = :email AND dr.assignmentStatus = 'PENDING') " +
+           "ORDER BY d.createdAt DESC")
+    List<Document> findDocumentsByUserEmail(@Param("email") String email);
     
     /**
      * 특정 폴더에 속한 문서들 조회
@@ -35,4 +43,9 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
      * 폴더에 속하지 않은 문서 개수
      */
     long countByFolderIsNull();
+    
+    /**
+     * 제목으로 문서 존재 여부 확인
+     */
+    boolean existsByTitle(String title);
 } 

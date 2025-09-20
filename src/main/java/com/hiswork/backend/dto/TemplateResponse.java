@@ -23,7 +23,7 @@ public class TemplateResponse {
     private String coordinateFields;  // 추가
     private UUID defaultFolderId;  // 기본 폴더 ID
     private String defaultFolderName;  // 기본 폴더 이름
-    private UUID createdById;
+    private String createdById;
     private String createdByName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
