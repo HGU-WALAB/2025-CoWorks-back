@@ -22,4 +22,11 @@ public interface DocumentRoleRepository extends JpaRepository<DocumentRole, Long
     
     @Query("SELECT dr FROM DocumentRole dr WHERE dr.document.id = :documentId AND dr.assignedUser.id = :userId AND dr.taskRole = :taskRole")
     Optional<DocumentRole> findByDocumentAndUserAndRole(@Param("documentId") Long documentId, @Param("userId") String userId, @Param("taskRole") DocumentRole.TaskRole taskRole);
+    
+    // 임시 유저 할당
+    @Query("SELECT dr FROM DocumentRole dr WHERE dr.pendingUserId = :pendingUserId AND dr.assignmentStatus = 'PENDING'")
+    List<DocumentRole> findByPendingUserId(@Param("pendingUserId") String pendingUserId);
+    
+    @Query("SELECT dr FROM DocumentRole dr WHERE dr.pendingEmail = :pendingEmail AND dr.assignmentStatus = 'PENDING'")
+    List<DocumentRole> findByPendingEmail(@Param("pendingEmail") String pendingEmail);
 } 

@@ -20,11 +20,18 @@ import org.springframework.web.bind.annotation.*;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.Optional;
 import com.hiswork.backend.service.PdfService;
+import com.hiswork.backend.service.ExcelParsingService;
+import com.hiswork.backend.dto.BulkDocumentCreateResponse;
+import com.hiswork.backend.service.BulkDocumentService;
+import com.hiswork.backend.dto.BulkCommitRequest;
+import com.hiswork.backend.dto.BulkCommitResponse;
+import org.springframework.web.multipart.MultipartFile;
 
 @Slf4j
 @RestController
@@ -38,6 +45,8 @@ public class DocumentController {
     private final UserRepository userRepository;
     private final AuthUtil authUtil;
     private final PdfService pdfService;
+    private final ExcelParsingService excelParsingService;
+    private final BulkDocumentService bulkDocumentService;
     
     @PostMapping
     public ResponseEntity<?> createDocument(
@@ -50,16 +59,39 @@ public class DocumentController {
             User creator = getCurrentUser(httpRequest);
             log.info("Creator user: {}", creator.getId());
             
-            Document document = documentService.createDocument(
-                    request.getTemplateId(), 
-                    creator, 
-                    request.getEditorEmail(),
-                    request.getTitle()
-            );
+            // 스테이징 ID가 있으면 대량 문서 생성 (엑셀 업로드 후)
+            if (request.getStagingId() != null && !request.getStagingId().trim().isEmpty()) {
+                log.info("스테이징 ID 발견, 대량 문서 생성 실행: {}", request.getStagingId());
+                log.info("요청자 정보 - ID: {}, 이메일: {}", creator.getId(), creator.getEmail());
+                
+                BulkCommitRequest bulkRequest = new BulkCommitRequest();
+                bulkRequest.setStagingId(request.getStagingId());
+                bulkRequest.setOnDuplicate(BulkCommitRequest.OnDuplicateAction.SKIP); // 기본값
+                
+                BulkCommitResponse bulkResponse = bulkDocumentService.commitBulkCreation(bulkRequest, creator);
+                
+                log.info("대량 문서 생성 완료 - 생성: {}, 건너뜀: {}, 실패: {}", 
+                        bulkResponse.getCreated(), bulkResponse.getSkipped(), bulkResponse.getFailed());
+                
+                return ResponseEntity.status(HttpStatus.CREATED)
+                        .body(bulkResponse);
+            }
+            // 기존 단일 문서 생성
+            else {
+                log.info("단일 문서 생성 실행");
+                
+                Document document = documentService.createDocument(
+                        request.getTemplateId(), 
+                        creator, 
+                        request.getEditorEmail(),
+                        request.getTitle()
+                );
+                
+                log.info("Document created successfully with ID: {}", document.getId());
+                return ResponseEntity.status(HttpStatus.CREATED)
+                        .body(DocumentResponse.from(document));
+            }
             
-            log.info("Document created successfully with ID: {}", document.getId());
-            return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(DocumentResponse.from(document));
         } catch (Exception e) {
             log.error("Error creating document", e);
             return ResponseEntity.badRequest()
@@ -326,7 +358,7 @@ public class DocumentController {
             return ResponseEntity.badRequest().build();
         }
     }
-    
+
     private User getCurrentUser(HttpServletRequest request) {
         try {
             log.info("=== JWT 토큰 추출 시작 ===");

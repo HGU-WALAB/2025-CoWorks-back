@@ -14,4 +14,7 @@ public interface TasksLogRepository extends JpaRepository<TasksLog, Long> {
     List<TasksLog> findByDocumentIdAndAssignedUserIdOrderByCreatedAtDesc(Long documentId, String assignedUserId);
     
     boolean existsByDocumentIdAndAssignedUserId(Long documentId, String assignedUserId);
+
+    // 임시 유저 정보 할당
+    List<TasksLog> findByDocumentIdAndAssignedUserIsNull(Long documentId);
 } 
