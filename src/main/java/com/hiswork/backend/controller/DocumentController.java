@@ -346,7 +346,23 @@ public class DocumentController {
             return ResponseEntity.ok(false);
         }
     }
-    
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteDocument(@PathVariable Long id, HttpServletRequest httpRequest) {
+        try {
+            User user = getCurrentUser(httpRequest);
+            log.info("🗑️ 문서 삭제 API 호출 - 문서 ID: {}, 사용자: {}", id, user.getEmail());
+            
+            documentService.deleteDocument(id, user);
+            
+            log.info("✅ 문서 삭제 성공 - 문서 ID: {}, 사용자: {}", id, user.getEmail());
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            log.error("❌ 문서 삭제 실패 - 문서 ID: {}, 오류: {}", id, e.getMessage(), e);
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
     @GetMapping("/{documentId}/history")
     public ResponseEntity<List<DocumentHistoryResponse>> getDocumentHistory(@PathVariable Long documentId, HttpServletRequest httpRequest) {
         try {
