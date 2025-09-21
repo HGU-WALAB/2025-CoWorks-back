@@ -781,6 +781,45 @@ public class DocumentService {
         return linkedCount;
     }
     
+    public void deleteDocument(Long documentId, User user) {
+        log.info("🗑️ 문서 삭제 요청 - 문서 ID: {}, 사용자: {}", documentId, user.getEmail());
+        
+        Document document = documentRepository.findById(documentId)
+                .orElseThrow(() -> new RuntimeException("문서를 찾을 수 없습니다"));
+        
+        // 삭제 권한 검증: CREATOR, EDITOR, 또는 폴더 접근 권한이 있는 사용자
+        boolean hasDeletePermission = isCreator(document, user) || 
+                                    isEditor(document, user) || 
+                                    user.canAccessFolders();
+        
+        if (!hasDeletePermission) {
+            log.warn("문서 삭제 권한 없음 - 문서 ID: {}, 사용자: {}", documentId, user.getEmail());
+            throw new RuntimeException("문서를 삭제할 권한이 없습니다");
+        }
+        
+        log.info("문서 삭제 권한 확인 완료 - 문서 ID: {}, 사용자: {} (생성자: {}, 편집자: {}, 폴더접근: {})",
+                documentId, user.getEmail(), 
+                isCreator(document, user), isEditor(document, user), user.canAccessFolders());
+        
+        // 관련 DocumentRole 데이터 삭제
+        List<DocumentRole> documentRoles = documentRoleRepository.findByDocumentId(documentId);
+        if (!documentRoles.isEmpty()) {
+            documentRoleRepository.deleteAll(documentRoles);
+            log.info("문서 역할 데이터 삭제 완료 - 문서 ID: {}, 삭제된 역할 수: {}", documentId, documentRoles.size());
+        }
+        
+        // 관련 TasksLog 데이터 삭제
+        List<TasksLog> tasksLogs = tasksLogRepository.findByDocumentIdOrderByCreatedAtDesc(documentId);
+        if (!tasksLogs.isEmpty()) {
+            tasksLogRepository.deleteAll(tasksLogs);
+            log.info("작업 로그 데이터 삭제 완료 - 문서 ID: {}, 삭제된 로그 수: {}", documentId, tasksLogs.size());
+        }
+        
+        // 문서 삭제
+        documentRepository.delete(document);
+        log.info("문서 삭제 완료 - 문서 ID: {}, 제목: {}", documentId, document.getTitle());
+    }
+    
      // 폴더 관리 권한 확인 (hasAccessFolders=true)
     public void validateFolderManagePermission(User user) {
         log.info("폴더 관리 권한 검증 - 사용자: {}, 권한: {}", user.getEmail(), user.canAccessFolders());
