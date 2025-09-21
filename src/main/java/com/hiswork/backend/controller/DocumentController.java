@@ -3,11 +3,9 @@ package com.hiswork.backend.controller;
 import com.hiswork.backend.domain.Document;
 import com.hiswork.backend.domain.User;
 import com.hiswork.backend.dto.DocumentCreateRequest;
-import com.hiswork.backend.dto.DocumentHistoryResponse;
 import com.hiswork.backend.dto.DocumentResponse;
 import com.hiswork.backend.dto.DocumentUpdateRequest;
 import com.hiswork.backend.repository.UserRepository;
-import com.hiswork.backend.service.DocumentHistoryService;
 import com.hiswork.backend.service.DocumentService;
 import com.hiswork.backend.util.AuthUtil;
 import jakarta.servlet.http.HttpServletRequest;
@@ -20,18 +18,15 @@ import org.springframework.web.bind.annotation.*;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.Optional;
 import com.hiswork.backend.service.PdfService;
 import com.hiswork.backend.service.ExcelParsingService;
-import com.hiswork.backend.dto.BulkDocumentCreateResponse;
 import com.hiswork.backend.service.BulkDocumentService;
 import com.hiswork.backend.dto.BulkCommitRequest;
 import com.hiswork.backend.dto.BulkCommitResponse;
-import org.springframework.web.multipart.MultipartFile;
 
 @Slf4j
 @RestController
@@ -41,7 +36,6 @@ import org.springframework.web.multipart.MultipartFile;
 public class DocumentController {
     
     private final DocumentService documentService;
-    private final DocumentHistoryService documentHistoryService;
     private final UserRepository userRepository;
     private final AuthUtil authUtil;
     private final PdfService pdfService;
@@ -360,18 +354,6 @@ public class DocumentController {
         } catch (Exception e) {
             log.error("❌ 문서 삭제 실패 - 문서 ID: {}, 오류: {}", id, e.getMessage(), e);
             return ResponseEntity.badRequest().body(e.getMessage());
-        }
-    }
-
-    @GetMapping("/{documentId}/history")
-    public ResponseEntity<List<DocumentHistoryResponse>> getDocumentHistory(@PathVariable Long documentId, HttpServletRequest httpRequest) {
-        try {
-            User user = getCurrentUser(httpRequest);
-            List<DocumentHistoryResponse> history = documentHistoryService.getDocumentHistory(documentId, user);
-            return ResponseEntity.ok(history);
-        } catch (Exception e) {
-            log.error("Error getting document history for document {}", documentId, e);
-            return ResponseEntity.badRequest().build();
         }
     }
 

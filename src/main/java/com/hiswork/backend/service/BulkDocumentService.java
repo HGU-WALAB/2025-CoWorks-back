@@ -29,7 +29,6 @@ public class BulkDocumentService {
     private final UserRepository userRepository;
     private final DocumentRepository documentRepository;
     private final DocumentRoleRepository documentRoleRepository;
-    private final TasksLogRepository tasksLogRepository;
     private final ObjectMapper objectMapper;
 
     // 1. 엑셀 파일 업로드 및 데이터 임시저장
@@ -360,16 +359,6 @@ public class BulkDocumentService {
         
         DocumentRole documentRole = roleBuilder.build();
         documentRoleRepository.save(documentRole);
-        
-        // 작업 로그 생성
-        TasksLog tasksLog = TasksLog.builder()
-                .document(document)
-                .assignedUser(existingUser.orElse(null))
-                .assignedBy(creator)
-                .status(TasksLog.TaskStatus.PENDING)
-                .build();
-        
-        tasksLogRepository.save(tasksLog);
         
         // 아이템 상태 업데이트
         item.setProcessingStatus(BulkStagingItem.ProcessingStatus.CREATED);

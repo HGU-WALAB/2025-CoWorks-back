@@ -5,7 +5,6 @@ import com.hiswork.backend.domain.DocumentRole;
 import com.hiswork.backend.dto.*;
 import com.hiswork.backend.repository.UserRepository;
 import com.hiswork.backend.repository.DocumentRoleRepository;
-import com.hiswork.backend.repository.TasksLogRepository;
 import com.hiswork.backend.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,7 +28,6 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final DocumentRoleRepository documentRoleRepository;
-    private final TasksLogRepository tasksLogRepository;
 
     @Value("${jwt.secret_key}")
     private String SECRET_KEY;
@@ -127,13 +125,6 @@ public class AuthService {
             role.setPendingName(null);
             
             documentRoleRepository.save(role);
-            
-            // 관련 TasksLog도 업데이트
-            List<com.hiswork.backend.domain.TasksLog> relatedLogs = tasksLogRepository.findByDocumentIdAndAssignedUserIsNull(role.getDocument().getId());
-            for (com.hiswork.backend.domain.TasksLog log : relatedLogs) {
-                log.setAssignedUser(newUser);
-                tasksLogRepository.save(log);
-            }
             
             linkedCount++;
             log.info("임시 할당 문서를 실제 사용자에게 연결: {} -> {}", role.getDocument().getTitle(), newUser.getEmail());

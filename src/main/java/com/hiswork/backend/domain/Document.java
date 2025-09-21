@@ -61,6 +61,11 @@ public class Document {
     @Builder.Default
     private List<DocumentRole> documentRoles = new ArrayList<>();
     
+    @OneToMany(mappedBy = "document", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
+    @Builder.Default
+    private List<DocumentStatusLog> statusLogs = new ArrayList<>();
+    
     public enum DocumentStatus {
         DRAFT, EDITING, READY_FOR_REVIEW, REVIEWING, COMPLETED, REJECTED
     }
