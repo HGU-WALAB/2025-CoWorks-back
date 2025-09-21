@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.hiswork.backend.domain.Document;
 import com.hiswork.backend.domain.DocumentRole;
+import com.hiswork.backend.domain.DocumentStatusLog;
 import com.hiswork.backend.domain.Template;
 import com.hiswork.backend.domain.User;
 import com.hiswork.backend.dto.BulkDocumentCreateResponse;
@@ -13,6 +14,7 @@ import com.hiswork.backend.dto.DocumentUpdateRequest;
 import com.hiswork.backend.dto.MailRequest;
 import com.hiswork.backend.repository.DocumentRepository;
 import com.hiswork.backend.repository.DocumentRoleRepository;
+import com.hiswork.backend.repository.DocumentStatusLogRepository;
 import com.hiswork.backend.repository.TemplateRepository;
 import com.hiswork.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -40,7 +42,7 @@ public class DocumentService {
     private final DocumentRepository documentRepository;
     private final TemplateRepository templateRepository;
     private final DocumentRoleRepository documentRoleRepository;
-    private final TasksLogRepository tasksLogRepository;
+    private final DocumentStatusLogRepository documentStatusLogRepository;
     private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
     private final PasswordEncoder passwordEncoder;
@@ -87,7 +89,7 @@ public class DocumentService {
             
             documentRoleRepository.save(editorRole);
             // 문서 상태를 EDITING으로 변경
-            document.setStatus(Document.DocumentStatus.EDITING);
+            changeDocumentStatus(document, Document.DocumentStatus.EDITING, editor, "편집자 할당으로 인한 상태 변경");
             document = documentRepository.save(document);
         }
 
@@ -156,7 +158,7 @@ public class DocumentService {
         
         // 문서가 DRAFT 상태인 경우만 EDITING으로 변경
         if (document.getStatus() == Document.DocumentStatus.DRAFT) {
-            document.setStatus(Document.DocumentStatus.EDITING);
+            changeDocumentStatus(document, Document.DocumentStatus.EDITING, user, "문서 편집 시작");
             document = documentRepository.save(document);
 
             log.info("문서 편집 시작 - 문서 ID: {}, 사용자: {}, 상태: {} -> EDITING", 
@@ -181,7 +183,7 @@ public class DocumentService {
         }
         
         // 상태를 READY_FOR_REVIEW로 변경
-        document.setStatus(Document.DocumentStatus.READY_FOR_REVIEW);
+        changeDocumentStatus(document, Document.DocumentStatus.READY_FOR_REVIEW, user, "검토 요청");
         document = documentRepository.save(document);
 
         return document;
@@ -207,7 +209,7 @@ public class DocumentService {
         documentRoleRepository.save(editorRole);
 
         // 문서 상태를 EDITING으로 변경
-        document.setStatus(Document.DocumentStatus.EDITING);
+        changeDocumentStatus(document, Document.DocumentStatus.EDITING, editor, "편집자 재할당");
         document = documentRepository.save(document);
         
         return document;
@@ -272,7 +274,7 @@ public class DocumentService {
                         .projectName("Hiswork") // 프로젝트 이름 따로 관리해야할듯. 지금은 고정값
                 .build());
 
-        document.setStatus(Document.DocumentStatus.REVIEWING);
+        changeDocumentStatus(document, Document.DocumentStatus.REVIEWING, assignedBy, "검토자 할당으로 검토 시작");
         documentRepository.save(document);
         
         return document;
@@ -280,12 +282,12 @@ public class DocumentService {
     
     @Transactional(readOnly = true)
     public List<Document> getDocumentsByUser(User user) {
-        return documentRepository.findDocumentsByUserId(user.getId());
+        return documentRepository.findDocumentsByUserIdWithStatusLogs(user.getId());
     }
     
     @Transactional(readOnly = true)
     public Optional<Document> getDocumentById(Long id) {
-        return documentRepository.findById(id);
+        return documentRepository.findByIdWithStatusLogs(id);
     }
     
     private boolean isCreator(Document document, User user) {
@@ -349,7 +351,7 @@ public class DocumentService {
         log.info("필수 필드 검증 완료");
         
         // 상태를 READY_FOR_REVIEW로 변경
-        document.setStatus(Document.DocumentStatus.READY_FOR_REVIEW);
+        changeDocumentStatus(document, Document.DocumentStatus.READY_FOR_REVIEW, user, "문서 업데이트 후 검토 대기");
         document = documentRepository.save(document);
 
         return document;
@@ -380,7 +382,7 @@ public class DocumentService {
         }
         
         // 상태를 COMPLETED로 변경
-        document.setStatus(Document.DocumentStatus.COMPLETED);
+        changeDocumentStatus(document, Document.DocumentStatus.COMPLETED, user, "문서 승인 완료");
         document = documentRepository.save(document);
         
         return document;
@@ -401,7 +403,7 @@ public class DocumentService {
         }
         
         // 상태를 REJECTED로 변경
-        document.setStatus(Document.DocumentStatus.REJECTED);
+        changeDocumentStatus(document, Document.DocumentStatus.REJECTED, user, reason != null ? reason : "문서 반려");
         document = documentRepository.save(document);
 
         return document;
@@ -693,5 +695,37 @@ public class DocumentService {
          if (!user.canAccessFolders()) {
              throw new RuntimeException("폴더 관리 권한이 없습니다. 관리자에게 문의하세요.");
          }
+    }
+    
+    /**
+     * 문서 상태 변경을 로그에 기록
+     */
+    private void logStatusChange(Document document, Document.DocumentStatus newStatus, User changedBy, String comment) {
+        DocumentStatusLog statusLog = DocumentStatusLog.builder()
+                .document(document)
+                .status(newStatus)
+                .changedByEmail(changedBy != null ? changedBy.getEmail() : null)
+                .changedByName(changedBy != null ? changedBy.getName() : null)
+                .comment(comment)
+                .build();
+        
+        documentStatusLogRepository.save(statusLog);
+        log.info("문서 상태 변경 로그 생성 - 문서ID: {}, 상태: {} -> {}, 변경자: {}", 
+                document.getId(), document.getStatus(), newStatus, 
+                changedBy != null ? changedBy.getEmail() : "시스템");
+    }
+    
+    /**
+     * 문서 상태 변경 (로그 포함)
+     */
+    public void changeDocumentStatus(Document document, Document.DocumentStatus newStatus, User changedBy, String comment) {
+        Document.DocumentStatus oldStatus = document.getStatus();
+        
+        // 상태가 실제로 변경되는 경우에만 로그 기록
+        if (oldStatus != newStatus) {
+            document.setStatus(newStatus);
+            documentRepository.save(document);
+            logStatusChange(document, newStatus, changedBy, comment);
+        }
     }
 } 
