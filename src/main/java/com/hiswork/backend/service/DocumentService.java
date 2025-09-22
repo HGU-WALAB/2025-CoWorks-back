@@ -178,7 +178,7 @@ public class DocumentService {
         }
         
         // 현재 상태가 EDITING이어야 함
-        if (document.getStatus() != Document.DocumentStatus.EDITING) {
+        if (document.getStatus() != Document.DocumentStatus.EDITING && document.getStatus() != Document.DocumentStatus.REJECTED) {
             throw new RuntimeException("문서가 편집 상태가 아닙니다");
         }
         
@@ -366,7 +366,7 @@ public class DocumentService {
             throw new RuntimeException("문서를 승인할 권한이 없습니다");
         }
         
-        // 현재 상태가 READY_FOR_REVIEW이어야 함
+        // 현재 상태가 REVIEWING 이어야 함
         if (document.getStatus() != Document.DocumentStatus.REVIEWING) {
             throw new RuntimeException("문서가 검토 대기 상태가 아닙니다");
         }
@@ -397,8 +397,8 @@ public class DocumentService {
             throw new RuntimeException("문서를 거부할 권한이 없습니다");
         }
         
-        // 현재 상태가 READY_FOR_REVIEW이어야 함
-        if (document.getStatus() != Document.DocumentStatus.READY_FOR_REVIEW) {
+        // 현재 상태가 REVIEWING 이어야 함
+        if (document.getStatus() != Document.DocumentStatus.REVIEWING) {
             throw new RuntimeException("문서가 검토 대기 상태가 아닙니다");
         }
         
@@ -406,6 +406,21 @@ public class DocumentService {
         changeDocumentStatus(document, Document.DocumentStatus.REJECTED, user, reason != null ? reason : "문서 반려");
         document = documentRepository.save(document);
 
+        // 작업 로그 추가
+        TasksLog rejectLog = TasksLog.builder()
+                .document(document)
+                .assignedBy(user)
+                .assignedUser(user)
+                .status(TasksLog.TaskStatus.REJECTED)
+                .rejectionReason(reason)
+                .completedAt(LocalDateTime.now())
+                .build();
+
+        documentRoleRepository.findByDocumentAndRole(documentId, DocumentRole.TaskRole.REVIEWER)
+                .ifPresent(existingRole -> documentRoleRepository.delete(existingRole));
+        
+        tasksLogRepository.save(rejectLog);
+        
         return document;
     }
     
