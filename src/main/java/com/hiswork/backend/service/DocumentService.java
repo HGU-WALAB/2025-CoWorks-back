@@ -6,16 +6,16 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.hiswork.backend.domain.Document;
 import com.hiswork.backend.domain.DocumentRole;
+import com.hiswork.backend.domain.DocumentStatusLog;
 import com.hiswork.backend.domain.Template;
-import com.hiswork.backend.domain.TasksLog;
 import com.hiswork.backend.domain.User;
 import com.hiswork.backend.dto.BulkDocumentCreateResponse;
 import com.hiswork.backend.dto.DocumentUpdateRequest;
 import com.hiswork.backend.dto.MailRequest;
 import com.hiswork.backend.repository.DocumentRepository;
 import com.hiswork.backend.repository.DocumentRoleRepository;
+import com.hiswork.backend.repository.DocumentStatusLogRepository;
 import com.hiswork.backend.repository.TemplateRepository;
-import com.hiswork.backend.repository.TasksLogRepository;
 import com.hiswork.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import com.hiswork.backend.domain.Position;
@@ -42,7 +42,7 @@ public class DocumentService {
     private final DocumentRepository documentRepository;
     private final TemplateRepository templateRepository;
     private final DocumentRoleRepository documentRoleRepository;
-    private final TasksLogRepository tasksLogRepository;
+    private final DocumentStatusLogRepository documentStatusLogRepository;
     private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
     private final PasswordEncoder passwordEncoder;
@@ -73,17 +73,6 @@ public class DocumentService {
                 .build();
         
         documentRoleRepository.save(creatorRole);
-        
-        // 생성자 작업 로그
-        TasksLog creatorTask = TasksLog.builder()
-                .document(document)
-                .assignedBy(creator)
-                .assignedUser(creator)
-                .status(TasksLog.TaskStatus.COMPLETED)
-                .completedAt(LocalDateTime.now())
-                .build();
-        
-        tasksLogRepository.save(creatorTask);
 
         User editor = null;
         
@@ -99,19 +88,8 @@ public class DocumentService {
                     .build();
             
             documentRoleRepository.save(editorRole);
-            
-            // 편집자 작업 로그
-            TasksLog editorTask = TasksLog.builder()
-                    .document(document)
-                    .assignedBy(creator)
-                    .assignedUser(editor)
-                    .status(TasksLog.TaskStatus.PENDING)
-                    .build();
-            
-            tasksLogRepository.save(editorTask);
-            
             // 문서 상태를 EDITING으로 변경
-            document.setStatus(Document.DocumentStatus.EDITING);
+            changeDocumentStatus(document, Document.DocumentStatus.EDITING, editor, "편집자 할당으로 인한 상태 변경");
             document = documentRepository.save(document);
         }
 
@@ -165,16 +143,6 @@ public class DocumentService {
         // 문서 데이터 업데이트
         document.setData(request.getData());
         document = documentRepository.save(document);
-        
-        // 작업 로그 추가
-        TasksLog updateLog = TasksLog.builder()
-                .document(document)
-                .assignedBy(user)
-                .assignedUser(user)
-                .status(TasksLog.TaskStatus.IN_PROGRESS)
-                .build();
-        
-        tasksLogRepository.save(updateLog);
 
         return document;
     }
@@ -190,19 +158,9 @@ public class DocumentService {
         
         // 문서가 DRAFT 상태인 경우만 EDITING으로 변경
         if (document.getStatus() == Document.DocumentStatus.DRAFT) {
-            document.setStatus(Document.DocumentStatus.EDITING);
+            changeDocumentStatus(document, Document.DocumentStatus.EDITING, user, "문서 편집 시작");
             document = documentRepository.save(document);
-            
-            // 편집 시작 로그 추가
-            TasksLog editingLog = TasksLog.builder()
-                    .document(document)
-                    .assignedBy(user)
-                    .assignedUser(user)
-                    .status(TasksLog.TaskStatus.IN_PROGRESS)
-                    .build();
-            
-            tasksLogRepository.save(editingLog);
-            
+
             log.info("문서 편집 시작 - 문서 ID: {}, 사용자: {}, 상태: {} -> EDITING", 
                     documentId, user.getId(), "DRAFT");
         }
@@ -225,20 +183,9 @@ public class DocumentService {
         }
         
         // 상태를 READY_FOR_REVIEW로 변경
-        document.setStatus(Document.DocumentStatus.READY_FOR_REVIEW);
+        changeDocumentStatus(document, Document.DocumentStatus.READY_FOR_REVIEW, user, "검토 요청");
         document = documentRepository.save(document);
-        
-        // 작업 로그 추가
-        TasksLog reviewRequestLog = TasksLog.builder()
-                .document(document)
-                .assignedBy(user)
-                .assignedUser(user)
-                .status(TasksLog.TaskStatus.COMPLETED)
-                .completedAt(LocalDateTime.now())
-                .build();
-        
-        tasksLogRepository.save(reviewRequestLog);
-        
+
         return document;
     }
     
@@ -260,19 +207,9 @@ public class DocumentService {
                 .build();
         
         documentRoleRepository.save(editorRole);
-        
-        // 작업 로그 추가
-        TasksLog editorTask = TasksLog.builder()
-                .document(document)
-                .assignedBy(assignedBy)
-                .assignedUser(editor)
-                .status(TasksLog.TaskStatus.PENDING)
-                .build();
-        
-        tasksLogRepository.save(editorTask);
-        
+
         // 문서 상태를 EDITING으로 변경
-        document.setStatus(Document.DocumentStatus.EDITING);
+        changeDocumentStatus(document, Document.DocumentStatus.EDITING, editor, "편집자 재할당");
         document = documentRepository.save(document);
         
         return document;
@@ -327,16 +264,6 @@ public class DocumentService {
                 .build();
         
         documentRoleRepository.save(reviewerRole);
-        
-        // 작업 로그 추가
-        TasksLog reviewerTask = TasksLog.builder()
-                .document(document)
-                .assignedBy(assignedBy)
-                .assignedUser(reviewer)
-                .status(TasksLog.TaskStatus.PENDING)
-                .build();
-
-        tasksLogRepository.save(reviewerTask);
 
         mailService.sendAssignReviewerNotification(MailRequest.ReviewerAssignmentEmailCommand.builder()
                         .documentTitle(document.getTemplate().getName()) // 문서 제목도 관리 해야함.
@@ -347,7 +274,7 @@ public class DocumentService {
                         .projectName("Hiswork") // 프로젝트 이름 따로 관리해야할듯. 지금은 고정값
                 .build());
 
-        document.setStatus(Document.DocumentStatus.REVIEWING);
+        changeDocumentStatus(document, Document.DocumentStatus.REVIEWING, assignedBy, "검토자 할당으로 검토 시작");
         documentRepository.save(document);
         
         return document;
@@ -355,12 +282,12 @@ public class DocumentService {
     
     @Transactional(readOnly = true)
     public List<Document> getDocumentsByUser(User user) {
-        return documentRepository.findDocumentsByUserId(user.getId());
+        return documentRepository.findDocumentsByUserIdWithStatusLogs(user.getId());
     }
     
     @Transactional(readOnly = true)
     public Optional<Document> getDocumentById(Long id) {
-        return documentRepository.findById(id);
+        return documentRepository.findByIdWithStatusLogs(id);
     }
     
     private boolean isCreator(Document document, User user) {
@@ -424,20 +351,9 @@ public class DocumentService {
         log.info("필수 필드 검증 완료");
         
         // 상태를 READY_FOR_REVIEW로 변경
-        document.setStatus(Document.DocumentStatus.READY_FOR_REVIEW);
+        changeDocumentStatus(document, Document.DocumentStatus.READY_FOR_REVIEW, user, "문서 업데이트 후 검토 대기");
         document = documentRepository.save(document);
-        
-        // 작업 로그 추가
-        TasksLog completeLog = TasksLog.builder()
-                .document(document)
-                .assignedBy(user)
-                .assignedUser(user)
-                .status(TasksLog.TaskStatus.COMPLETED)
-                .completedAt(LocalDateTime.now())
-                .build();
-        
-        tasksLogRepository.save(completeLog);
-        
+
         return document;
     }
     
@@ -466,19 +382,8 @@ public class DocumentService {
         }
         
         // 상태를 COMPLETED로 변경
-        document.setStatus(Document.DocumentStatus.COMPLETED);
+        changeDocumentStatus(document, Document.DocumentStatus.COMPLETED, user, "문서 승인 완료");
         document = documentRepository.save(document);
-        
-        // 작업 로그 추가
-        TasksLog approveLog = TasksLog.builder()
-                .document(document)
-                .assignedBy(user)
-                .assignedUser(user)
-                .status(TasksLog.TaskStatus.COMPLETED)
-                .completedAt(LocalDateTime.now())
-                .build();
-        
-        tasksLogRepository.save(approveLog);
         
         return document;
     }
@@ -498,9 +403,9 @@ public class DocumentService {
         }
         
         // 상태를 REJECTED로 변경
-        document.setStatus(Document.DocumentStatus.REJECTED);
+        changeDocumentStatus(document, Document.DocumentStatus.REJECTED, user, reason != null ? reason : "문서 반려");
         document = documentRepository.save(document);
-        
+
         // 작업 로그 추가
         TasksLog rejectLog = TasksLog.builder()
                 .document(document)
@@ -695,16 +600,6 @@ public class DocumentService {
                 DocumentRole documentRole = roleBuilder.build();
                 documentRoleRepository.save(documentRole);
                 
-                // 7. 작업 로그 생성
-                TasksLog tasksLog = TasksLog.builder()
-                    .document(document)
-                    .assignedUser(existingUser.orElse(null))
-                    .assignedBy(creator)
-                    .status(TasksLog.TaskStatus.PENDING)
-                    .build();
-                
-                tasksLogRepository.save(tasksLog);
-                
             } catch (Exception e) {
                 log.error("문서 생성 실패 - 행 {}: {}", rowNumber, e.getMessage(), e);
                 errors.add(com.hiswork.backend.dto.BulkDocumentCreateResponse.ErrorItem.builder()
@@ -769,19 +664,44 @@ public class DocumentService {
             role.setPendingName(null);
             
             documentRoleRepository.save(role);
-            
-            // 관련 TasksLog도 업데이트
-            List<TasksLog> relatedLogs = tasksLogRepository.findByDocumentIdAndAssignedUserIsNull(role.getDocument().getId());
-            for (TasksLog log : relatedLogs) {
-                log.setAssignedUser(newUser);
-                tasksLogRepository.save(log);
-            }
-            
+
             linkedCount++;
             log.info("임시 할당 문서를 실제 사용자에게 연결: {} -> {}", role.getDocument().getTitle(), newUser.getEmail());
         }
         
         return linkedCount;
+    }
+    
+    public void deleteDocument(Long documentId, User user) {
+        log.info("🗑️ 문서 삭제 요청 - 문서 ID: {}, 사용자: {}", documentId, user.getEmail());
+        
+        Document document = documentRepository.findById(documentId)
+                .orElseThrow(() -> new RuntimeException("문서를 찾을 수 없습니다"));
+        
+        // 삭제 권한 검증: CREATOR, EDITOR, 또는 폴더 접근 권한이 있는 사용자
+        boolean hasDeletePermission = isCreator(document, user) || 
+                                    isEditor(document, user) || 
+                                    user.canAccessFolders();
+        
+        if (!hasDeletePermission) {
+            log.warn("문서 삭제 권한 없음 - 문서 ID: {}, 사용자: {}", documentId, user.getEmail());
+            throw new RuntimeException("문서를 삭제할 권한이 없습니다");
+        }
+        
+        log.info("문서 삭제 권한 확인 완료 - 문서 ID: {}, 사용자: {} (생성자: {}, 편집자: {}, 폴더접근: {})",
+                documentId, user.getEmail(), 
+                isCreator(document, user), isEditor(document, user), user.canAccessFolders());
+        
+        // 관련 DocumentRole 데이터 삭제
+        List<DocumentRole> documentRoles = documentRoleRepository.findByDocumentId(documentId);
+        if (!documentRoles.isEmpty()) {
+            documentRoleRepository.deleteAll(documentRoles);
+            log.info("문서 역할 데이터 삭제 완료 - 문서 ID: {}, 삭제된 역할 수: {}", documentId, documentRoles.size());
+        }
+
+        // 문서 삭제
+        documentRepository.delete(document);
+        log.info("문서 삭제 완료 - 문서 ID: {}, 제목: {}", documentId, document.getTitle());
     }
     
      // 폴더 관리 권한 확인 (hasAccessFolders=true)
@@ -790,5 +710,37 @@ public class DocumentService {
          if (!user.canAccessFolders()) {
              throw new RuntimeException("폴더 관리 권한이 없습니다. 관리자에게 문의하세요.");
          }
+    }
+    
+    /**
+     * 문서 상태 변경을 로그에 기록
+     */
+    private void logStatusChange(Document document, Document.DocumentStatus newStatus, User changedBy, String comment) {
+        DocumentStatusLog statusLog = DocumentStatusLog.builder()
+                .document(document)
+                .status(newStatus)
+                .changedByEmail(changedBy != null ? changedBy.getEmail() : null)
+                .changedByName(changedBy != null ? changedBy.getName() : null)
+                .comment(comment)
+                .build();
+        
+        documentStatusLogRepository.save(statusLog);
+        log.info("문서 상태 변경 로그 생성 - 문서ID: {}, 상태: {} -> {}, 변경자: {}", 
+                document.getId(), document.getStatus(), newStatus, 
+                changedBy != null ? changedBy.getEmail() : "시스템");
+    }
+    
+    /**
+     * 문서 상태 변경 (로그 포함)
+     */
+    public void changeDocumentStatus(Document document, Document.DocumentStatus newStatus, User changedBy, String comment) {
+        Document.DocumentStatus oldStatus = document.getStatus();
+        
+        // 상태가 실제로 변경되는 경우에만 로그 기록
+        if (oldStatus != newStatus) {
+            document.setStatus(newStatus);
+            documentRepository.save(document);
+            logStatusChange(document, newStatus, changedBy, comment);
+        }
     }
 } 

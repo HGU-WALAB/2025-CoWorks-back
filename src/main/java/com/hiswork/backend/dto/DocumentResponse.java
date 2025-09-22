@@ -27,6 +27,7 @@ public class DocumentResponse {
     private LocalDateTime updatedAt;
     private LocalDateTime deadline;
     private List<TaskInfo> tasks;
+    private List<DocumentStatusLogResponse> statusLogs;
     
     // Template 정보 추가
     private TemplateInfo template;
@@ -34,6 +35,10 @@ public class DocumentResponse {
     public static DocumentResponse from(Document document) {
         List<TaskInfo> taskInfos = document.getDocumentRoles().stream()
                 .map(TaskInfo::from)
+                .collect(Collectors.toList());
+        
+        List<DocumentStatusLogResponse> statusLogResponses = document.getStatusLogs().stream()
+                .map(DocumentStatusLogResponse::from)
                 .collect(Collectors.toList());
         
         TemplateInfo templateInfo = TemplateInfo.from(document.getTemplate());
@@ -49,6 +54,7 @@ public class DocumentResponse {
                 .updatedAt(document.getUpdatedAt())
                 .deadline(document.getDeadline())
                 .tasks(taskInfos)
+                .statusLogs(statusLogResponses)
                 .template(templateInfo)
                 .build();
     }
