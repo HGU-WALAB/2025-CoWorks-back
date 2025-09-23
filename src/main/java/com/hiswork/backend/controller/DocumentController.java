@@ -112,9 +112,9 @@ public class DocumentController {
     @GetMapping("/{id}")
     public ResponseEntity<DocumentResponse> getDocument(@PathVariable Long id) {
         try {
-            Optional<Document> documentOpt = documentService.getDocumentById(id);
-            if (documentOpt.isPresent()) {
-                return ResponseEntity.ok(DocumentResponse.from(documentOpt.get()));
+            DocumentResponse response = documentService.getDocumentResponse(id);
+            if (response != null) {
+                return ResponseEntity.ok(response);
             } else {
                 return ResponseEntity.notFound().build();
             }
