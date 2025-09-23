@@ -328,14 +328,13 @@ public class BulkDocumentService {
         if (existingUser.isPresent()) {
             // 등록된 사용자 - 즉시 할당
             roleBuilder
-                    .assignedUser(existingUser.get())
+                    .assignedUserId(existingUser.get().getId())
                     .assignmentStatus(DocumentRole.AssignmentStatus.ACTIVE)
                     .claimStatus(DocumentRole.ClaimStatus.CLAIMED);
         } else {
             // 미등록 사용자 - 가입 대기 할당
             roleBuilder
-                    .assignedUser(null)
-                    .pendingUserId(item.getStudentId())
+                    .assignedUserId(item.getStudentId())
                     .pendingEmail(item.getEmail())
                     .pendingName(item.getName())
                     .assignmentStatus(DocumentRole.AssignmentStatus.PENDING)

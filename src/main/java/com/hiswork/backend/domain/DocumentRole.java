@@ -28,14 +28,10 @@ public class DocumentRole {
     @JsonIgnore
     private Document document;
     
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "assigned_user_id", nullable = true)
-    private User assignedUser;
+    @Column(name = "assigned_user_id", length = 50)
+    private String assignedUserId;
     
-    // 임시 유저 정보 할당 관련 필드 (assignedUser가 null인 경우 사용)
-    @Column(name = "pending_user_id")
-    private String pendingUserId;  // 미등록 사용자의 학번 
-    
+    // 임시 유저 정보 (가입 전 표시용)
     @Column(name = "pending_email")
     private String pendingEmail;   // 미등록 사용자의 이메일
     
