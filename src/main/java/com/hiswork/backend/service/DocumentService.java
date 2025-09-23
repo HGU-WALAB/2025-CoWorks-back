@@ -406,21 +406,10 @@ public class DocumentService {
         changeDocumentStatus(document, Document.DocumentStatus.REJECTED, user, reason != null ? reason : "문서 반려");
         document = documentRepository.save(document);
 
-        // 작업 로그 추가
-        TasksLog rejectLog = TasksLog.builder()
-                .document(document)
-                .assignedBy(user)
-                .assignedUser(user)
-                .status(TasksLog.TaskStatus.REJECTED)
-                .rejectionReason(reason)
-                .completedAt(LocalDateTime.now())
-                .build();
 
         documentRoleRepository.findByDocumentAndRole(documentId, DocumentRole.TaskRole.REVIEWER)
                 .ifPresent(existingRole -> documentRoleRepository.delete(existingRole));
-        
-        tasksLogRepository.save(rejectLog);
-        
+
         return document;
     }
     
