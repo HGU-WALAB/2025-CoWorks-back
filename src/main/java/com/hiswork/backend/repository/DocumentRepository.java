@@ -14,13 +14,13 @@ import java.util.Optional;
 public interface DocumentRepository extends JpaRepository<Document, Long> {
     
     @Query("SELECT d FROM Document d JOIN d.documentRoles dr WHERE " +
-           "(dr.assignedUser.id = :userId AND dr.assignmentStatus = 'ACTIVE') OR " +
-           "(dr.pendingUserId = :userId AND dr.assignmentStatus = 'PENDING') " +
+           "(dr.assignedUserId = :userId AND dr.assignmentStatus = 'ACTIVE') OR " +
+           "(dr.assignedUserId = :userId AND dr.assignmentStatus = 'PENDING') " +
            "ORDER BY d.createdAt DESC")
     List<Document> findDocumentsByUserId(@Param("userId") String userId);
     
-    @Query("SELECT d FROM Document d JOIN d.documentRoles dr WHERE " +
-           "(dr.assignedUser.email = :email AND dr.assignmentStatus = 'ACTIVE') OR " +
+    @Query("SELECT d FROM Document d JOIN d.documentRoles dr, com.hiswork.backend.domain.User u WHERE " +
+           "u.id = dr.assignedUserId AND (u.email = :email AND dr.assignmentStatus = 'ACTIVE') OR " +
            "(dr.pendingEmail = :email AND dr.assignmentStatus = 'PENDING') " +
            "ORDER BY d.createdAt DESC")
     List<Document> findDocumentsByUserEmail(@Param("email") String email);
@@ -62,8 +62,8 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
     @Query("SELECT DISTINCT d FROM Document d " +
            "LEFT JOIN FETCH d.statusLogs sl " +
            "JOIN d.documentRoles dr WHERE " +
-           "(dr.assignedUser.id = :userId AND dr.assignmentStatus = 'ACTIVE') OR " +
-           "(dr.pendingUserId = :userId AND dr.assignmentStatus = 'PENDING') " +
+           "(dr.assignedUserId = :userId AND dr.assignmentStatus = 'ACTIVE') OR " +
+           "(dr.assignedUserId = :userId AND dr.assignmentStatus = 'PENDING') " +
            "ORDER BY d.createdAt DESC, sl.timestamp ASC")
     List<Document> findDocumentsByUserIdWithStatusLogs(@Param("userId") String userId);
 } 

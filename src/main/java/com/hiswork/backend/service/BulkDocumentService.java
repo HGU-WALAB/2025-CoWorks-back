@@ -1,6 +1,9 @@
 package com.hiswork.backend.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.hiswork.backend.domain.*;
 import com.hiswork.backend.dto.*;
 import com.hiswork.backend.repository.*;
@@ -31,7 +34,7 @@ public class BulkDocumentService {
     private final DocumentRoleRepository documentRoleRepository;
     private final ObjectMapper objectMapper;
 
-    // 1. 엑셀 파일 업로드 및 데이터 임시저장
+    // 엑셀 파일 업로드 및 데이터 임시저장
     public BulkPreviewResponse createPreview(MultipartFile file, Long templateId, User creator) {
         log.info("대량 업로드 시작 - 사용자 메일: {}, 템플릿: {}", creator.getEmail(), templateId);
         
@@ -72,8 +75,6 @@ public class BulkDocumentService {
         int validCount = 0;
         int invalidCount = 0;
         
-        Set<String> duplicateTitles = new HashSet<>();
-        Set<String> seenTitles = new HashSet<>();
         
         for (int i = 0; i < records.size(); i++) {
             ExcelParsingService.StudentRecord record = records.get(i);
@@ -86,22 +87,7 @@ public class BulkDocumentService {
             // 유효성 검증
             if (!isValid) {
                 validationError = record.getValidationError();
-            } else {
-                // 중복 제목 검증
-                if (seenTitles.contains(documentTitle)) {
-                    duplicateTitles.add(documentTitle);
-                    isValid = false;
-                    validationError = "중복된 문서 제목: " + documentTitle;
-                } else {
-                    seenTitles.add(documentTitle);
-                    
-                    // DB에서 중복 제목 확인
-                    if (documentRepository.existsByTitle(documentTitle)) {
-                        isValid = false;
-                        validationError = "이미 존재하는 문서 제목: " + documentTitle;
-                    }
-                }
-            }
+            } 
             
             if (isValid) {
                 validCount++;
@@ -124,10 +110,7 @@ public class BulkDocumentService {
             items.add(item);
         }
         
-        // 중복 제목 경고 추가
-        if (!duplicateTitles.isEmpty()) {
-            warnings.add("파일 내 중복 제목이 발견되었습니다: " + String.join(", ", duplicateTitles));
-        }
+        // 중복 제목 허용: 경고 추가 없음
         
         // 5. 스테이징 정보 업데이트 및 저장
         staging.setValidRows(validCount);
@@ -152,8 +135,7 @@ public class BulkDocumentService {
         );
     }
 
-    // 2. 엑셀 파일 문서 생성 확정 (preview -> commit)
-
+    // 엑셀 파일 문서 생성 확정 (preview -> commit)
     public BulkCommitResponse commitBulkCreation(BulkCommitRequest request, User creator) {
         log.info("대량 문서 생성 확정 시작 - 스테이징 ID: {}, 사용자: {}", request.getStagingId(), creator.getEmail());
         
@@ -237,7 +219,7 @@ public class BulkDocumentService {
                 .build();
     }
 
-    // 3. staging에 있는 아이템들 조회
+    // staging에 있는 아이템들 조회
     public BulkStagingItemsResponse getStagingItems(String stagingId, User creator) {
         log.info("스테이징 아이템 조회 - 스테이징 ID: {}, 사용자: {}", stagingId, creator.getEmail());
         
@@ -266,7 +248,7 @@ public class BulkDocumentService {
                 .build();
     }
 
-    // 4. 파일 업로드 취소 (preview -> cancel)
+    // 파일 업로드 취소 (preview -> cancel)
     public BulkCancelResponse cancelBulkUpload(BulkCancelRequest request, User creator) {
         log.info("대량 업로드 취소 - 스테이징 ID: {}, 사용자: {}", request.getStagingId(), creator.getEmail());
         
@@ -291,6 +273,7 @@ public class BulkDocumentService {
                                                      BulkCommitRequest.OnDuplicateAction onDuplicate) {
         
         String documentTitle = item.getDocumentTitle();
+        // 중복 제목 허용: 어떤 정책도 적용하지 않음
         
         // 중복 제목 처리
         if (documentRepository.existsByTitle(documentTitle)) {
@@ -322,11 +305,13 @@ public class BulkDocumentService {
         }
         
         // 문서 생성
+        ObjectNode initialData = initializeDocumentData(template);
+
         Document document = Document.builder()
                 .title(documentTitle)
                 .template(template)
                 .status(Document.DocumentStatus.EDITING)
-                .data(objectMapper.createObjectNode())
+                .data(initialData)
                 .folder(template.getDefaultFolder())
                 .build();
         
@@ -343,14 +328,13 @@ public class BulkDocumentService {
         if (existingUser.isPresent()) {
             // 등록된 사용자 - 즉시 할당
             roleBuilder
-                    .assignedUser(existingUser.get())
+                    .assignedUserId(existingUser.get().getId())
                     .assignmentStatus(DocumentRole.AssignmentStatus.ACTIVE)
                     .claimStatus(DocumentRole.ClaimStatus.CLAIMED);
         } else {
             // 미등록 사용자 - 가입 대기 할당
             roleBuilder
-                    .assignedUser(null)
-                    .pendingUserId(item.getStudentId())
+                    .assignedUserId(item.getStudentId())
                     .pendingEmail(item.getEmail())
                     .pendingName(item.getName())
                     .assignmentStatus(DocumentRole.AssignmentStatus.PENDING)
@@ -379,21 +363,39 @@ public class BulkDocumentService {
     
     
     // === 유틸리티 메서드들 ===
-    
+
+    private ObjectNode initializeDocumentData(Template template) {
+        ObjectNode data = objectMapper.createObjectNode();
+
+        // 템플릿에서 coordinateFields 복사 (레거시 지원용)
+        if (template.getCoordinateFields() != null && !template.getCoordinateFields().trim().isEmpty()) {
+            try {
+                JsonNode coordinateFieldsJson = objectMapper.readTree(template.getCoordinateFields());
+                if (coordinateFieldsJson.isArray()) {
+                    // coordinateFields를 값만 빈 상태로 복사
+                    ArrayNode fieldsArray = objectMapper.createArrayNode();
+                    for (JsonNode field : coordinateFieldsJson) {
+                        ObjectNode fieldCopy = field.deepCopy();
+                        fieldCopy.put("value", ""); // 값은 빈 문자열로 초기화
+                        fieldsArray.add(fieldCopy);
+                    }
+                    data.set("coordinateFields", fieldsArray);
+                    log.info("문서 생성 시 템플릿의 coordinateFields 복사: {} 개 필드", fieldsArray.size());
+                }
+            } catch (Exception e) {
+                log.warn("템플릿 coordinateFields 파싱 실패: {}", e.getMessage());
+            }
+        }
+
+        return data;
+    }
+
     private String generateDocumentTitle(ExcelParsingService.StudentRecord record) {
         return record.getName() + "_" + record.getCourse() + " 근무일지";
     }
     
     private String generateUniqueTitle(String baseTitle) {
-        String uniqueTitle = baseTitle;
-        int counter = 2;
-        
-        while (documentRepository.existsByTitle(uniqueTitle)) {
-            uniqueTitle = baseTitle + " (" + counter + ")";
-            counter++;
-        }
-        
-        return uniqueTitle;
+        return baseTitle;
     }
     
     private Optional<User> findUserByEmailOrId(String email, String studentId) {

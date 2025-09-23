@@ -110,7 +110,7 @@ public class AuthService {
         // 이메일로 임시 할당된 문서들 검색
         pendingRoles.addAll(documentRoleRepository.findByPendingEmail(newUser.getEmail()));
         
-        // ID(학번)로 임시 할당된 문서들 검색
+        // ID(학번)로 임시 할당된 문서들 검색 (assignedUserId에 저장됨)
         if (newUser.getId() != null) {
             pendingRoles.addAll(documentRoleRepository.findByPendingUserId(newUser.getId()));
         }
@@ -118,9 +118,8 @@ public class AuthService {
         int linkedCount = 0;
         for (DocumentRole role : pendingRoles) {
             // 임시 할당을 실제 사용자로 전환
-            role.setAssignedUser(newUser);
+            role.setAssignedUserId(newUser.getId());
             role.setAssignmentStatus(DocumentRole.AssignmentStatus.ACTIVE);
-            role.setPendingUserId(null);
             role.setPendingEmail(null);
             role.setPendingName(null);
             
