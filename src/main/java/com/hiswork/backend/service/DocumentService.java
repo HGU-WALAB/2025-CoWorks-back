@@ -10,6 +10,8 @@ import com.hiswork.backend.domain.DocumentStatusLog;
 import com.hiswork.backend.domain.Template;
 import com.hiswork.backend.domain.User;
 import com.hiswork.backend.dto.BulkDocumentCreateResponse;
+import com.hiswork.backend.dto.DocumentResponse;
+import com.hiswork.backend.dto.DocumentStatusLogResponse;
 import com.hiswork.backend.dto.DocumentUpdateRequest;
 import com.hiswork.backend.dto.MailRequest;
 import com.hiswork.backend.repository.DocumentRepository;
@@ -27,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import java.util.ArrayList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -287,6 +290,69 @@ public class DocumentService {
     @Transactional(readOnly = true)
     public Optional<Document> getDocumentById(Long id) {
         return documentRepository.findByIdWithStatusLogs(id);
+    }
+    
+    @Transactional(readOnly = true)
+    public DocumentResponse getDocumentResponse(Long id) {
+        Optional<Document> documentOpt = documentRepository.findByIdWithStatusLogs(id);
+        if (documentOpt.isEmpty()) {
+            return null;
+        }
+        
+        Document document = documentOpt.get();
+        
+        // TaskInfo 생성 시 실제 사용자 정보 포함
+        List<DocumentResponse.TaskInfo> taskInfos = document.getDocumentRoles().stream()
+                .map(role -> {
+                    String userEmail = null;
+                    String userName = null;
+                    
+                    // assignedUserId가 있으면 실제 사용자 정보 조회
+                    if (role.getAssignedUserId() != null) {
+                        Optional<User> userOpt = userRepository.findById(role.getAssignedUserId());
+                        if (userOpt.isPresent()) {
+                            User user = userOpt.get();
+                            userEmail = user.getEmail();
+                            userName = user.getName();
+                        }
+                    } else {
+                        // 임시 사용자 정보 사용
+                        userEmail = role.getPendingEmail();
+                        userName = role.getPendingName();
+                    }
+                    
+                    return DocumentResponse.TaskInfo.builder()
+                            .id(role.getId())
+                            .role(role.getTaskRole().name())
+                            .assignedUserName(userName)
+                            .assignedUserEmail(userEmail)
+                            .canAssignReviewer(role.getCanAssignReviewer())
+                            .createdAt(role.getCreatedAt())
+                            .updatedAt(role.getUpdatedAt())
+                            .build();
+                })
+                .collect(Collectors.toList());
+        
+        List<DocumentStatusLogResponse> statusLogResponses = document.getStatusLogs().stream()
+                .map(DocumentStatusLogResponse::from)
+                .collect(Collectors.toList());
+        
+        DocumentResponse.TemplateInfo templateInfo = DocumentResponse.TemplateInfo.from(document.getTemplate());
+        
+        return DocumentResponse.builder()
+                .id(document.getId())
+                .templateId(document.getTemplate().getId())
+                .templateName(document.getTemplate().getName())
+                .title(document.getTitle())
+                .data(document.getData())
+                .status(document.getStatus().name())
+                .createdAt(document.getCreatedAt())
+                .updatedAt(document.getUpdatedAt())
+                .deadline(document.getDeadline())
+                .tasks(taskInfos)
+                .statusLogs(statusLogResponses)
+                .template(templateInfo)
+                .build();
     }
     
     private boolean isCreator(Document document, User user) {
