@@ -300,6 +300,26 @@ public class DocumentController {
         }
     }
     
+    @PostMapping("/{documentId}/complete-signer-assignment")
+    public ResponseEntity<?> completeSignerAssignment(
+            @PathVariable Long documentId,
+            HttpServletRequest httpRequest) {
+        
+        try {
+            User user = getCurrentUser(httpRequest);
+            log.info("서명자 지정 완료 요청 - 문서 ID: {}, 사용자: {}", documentId, user.getId());
+            
+            Document document = documentService.completeSignerAssignment(documentId, user);
+            
+            log.info("서명자 지정 완료 성공 - 문서 ID: {}, 새 상태: {}", documentId, document.getStatus());
+            return ResponseEntity.ok(DocumentResponse.from(document));
+        } catch (Exception e) {
+            log.error("서명자 지정 완료 실패 - 문서 ID: {}, 오류: {}", documentId, e.getMessage(), e);
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", e.getMessage()));
+        }
+    }
+
     @PostMapping("/{documentId}/approve")
     public ResponseEntity<DocumentResponse> approveDocument(
             @PathVariable Long documentId,

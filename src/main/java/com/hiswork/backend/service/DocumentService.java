@@ -276,9 +276,44 @@ public class DocumentService {
                         .projectName("Hiswork") // 프로젝트 이름 따로 관리해야할듯. 지금은 고정값
                 .build());
 
-        changeDocumentStatus(document, Document.DocumentStatus.REVIEWING, assignedBy, "검토자 할당으로 검토 시작");
+        // 서명자 지정만 하고 상태는 READY_FOR_REVIEW 유지 (서명 필드 배치 후 completeSignerAssignment로 REVIEWING으로 변경)
         documentRepository.save(document);
         
+        return document;
+    }
+
+    /**
+     * 서명자 지정 완료 후 리뷰 단계로 이동
+     */
+    public Document completeSignerAssignment(Long documentId, User user) {
+        log.info("서명자 지정 완료 처리 시작 - 문서 ID: {}, 사용자: {}", documentId, user.getId());
+        
+        Document document = documentRepository.findById(documentId)
+                .orElseThrow(() -> new RuntimeException("Document not found"));
+        
+        // 서명자 지정 권한 확인
+        if (!canAssignReviewer(document, user)) {
+            throw new RuntimeException("서명자 지정 권한이 없습니다");
+        }
+        
+        // 현재 상태가 READY_FOR_REVIEW이어야 함 (서명자 지정 단계)
+        if (document.getStatus() != Document.DocumentStatus.READY_FOR_REVIEW) {
+            throw new RuntimeException("문서가 서명자 지정 상태가 아닙니다");
+        }
+        
+        // 서명자가 지정되어 있는지 확인
+        boolean hasReviewer = documentRoleRepository.existsByDocumentIdAndTaskRole(
+                documentId, DocumentRole.TaskRole.REVIEWER);
+        
+        if (!hasReviewer) {
+            throw new RuntimeException("서명자가 지정되지 않았습니다");
+        }
+        
+        // 상태를 REVIEWING으로 변경
+        changeDocumentStatus(document, Document.DocumentStatus.REVIEWING, user, "서명자 지정 완료 - 리뷰 단계로 이동");
+        document = documentRepository.save(document);
+        
+        log.info("서명자 지정 완료 처리 완료 - 문서 ID: {}", documentId);
         return document;
     }
     
@@ -415,8 +450,8 @@ public class DocumentService {
         validateRequiredFields(document);
         log.info("필수 필드 검증 완료");
         
-        // 상태를 READY_FOR_REVIEW로 변경
-        changeDocumentStatus(document, Document.DocumentStatus.READY_FOR_REVIEW, user, "문서 업데이트 후 검토 대기");
+        // 상태를 READY_FOR_REVIEW로 변경 (서명자 지정 단계)
+        changeDocumentStatus(document, Document.DocumentStatus.READY_FOR_REVIEW, user, "편집 완료 - 서명자 지정 단계로 이동");
         document = documentRepository.save(document);
 
         return document;
@@ -478,6 +513,21 @@ public class DocumentService {
         return document;
     }
     
+    public boolean canAssignReviewer(Document document, User user) {
+        try {
+            // 해당 사용자의 모든 역할을 조회하여 작성자이거나 편집자인 역할이 있는지 확인
+            List<DocumentRole> roles = documentRoleRepository.findAllByDocumentAndUser(document.getId(), user.getId());
+            
+            return roles.stream().anyMatch(role ->
+                role.getTaskRole() == DocumentRole.TaskRole.CREATOR || 
+                role.getTaskRole() == DocumentRole.TaskRole.EDITOR
+            );
+        } catch (Exception e) {
+            log.error("Error checking assign reviewer permission for document {} and user {}", document.getId(), user.getId(), e);
+            return false;
+        }
+    }
+
     public boolean canReview(Long documentId, User user) {
         try {
             Document document = getDocumentById(documentId)
@@ -490,9 +540,7 @@ public class DocumentService {
             log.error("Error checking review permission for document {} and user {}", documentId, user.getId(), e);
             return false;
         }
-    }
-    
-    private void validateRequiredFields(Document document) {
+    }    private void validateRequiredFields(Document document) {
         try {
             log.info("필수 필드 검증 시작 - 문서 ID: {}", document.getId());
             
