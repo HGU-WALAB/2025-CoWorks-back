@@ -20,6 +20,9 @@ public interface DocumentRoleRepository extends JpaRepository<DocumentRole, Long
     @Query("SELECT dr FROM DocumentRole dr WHERE dr.document.id = :documentId AND dr.assignedUserId = :userId")
     Optional<DocumentRole> findByDocumentAndUser(@Param("documentId") Long documentId, @Param("userId") String userId);
     
+    @Query("SELECT dr FROM DocumentRole dr WHERE dr.document.id = :documentId AND dr.assignedUserId = :userId")
+    List<DocumentRole> findAllByDocumentAndUser(@Param("documentId") Long documentId, @Param("userId") String userId);
+    
     @Query("SELECT dr FROM DocumentRole dr WHERE dr.document.id = :documentId AND dr.assignedUserId = :userId AND dr.taskRole = :taskRole")
     Optional<DocumentRole> findByDocumentAndUserAndRole(@Param("documentId") Long documentId, @Param("userId") String userId, @Param("taskRole") DocumentRole.TaskRole taskRole);
     
@@ -29,4 +32,7 @@ public interface DocumentRoleRepository extends JpaRepository<DocumentRole, Long
 
     @Query("SELECT dr FROM DocumentRole dr WHERE dr.pendingEmail = :pendingEmail AND dr.assignmentStatus = 'PENDING'")
     List<DocumentRole> findByPendingEmail(@Param("pendingEmail") String pendingEmail);
+
+    @Query("SELECT COUNT(dr) > 0 FROM DocumentRole dr WHERE dr.document.id = :documentId AND dr.taskRole = :taskRole")
+    boolean existsByDocumentIdAndTaskRole(@Param("documentId") Long documentId, @Param("taskRole") DocumentRole.TaskRole taskRole);
 } 
