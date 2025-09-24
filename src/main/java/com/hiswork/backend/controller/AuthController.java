@@ -2,9 +2,11 @@ package com.hiswork.backend.controller;
 
 import com.hiswork.backend.dto.*;
 import com.hiswork.backend.service.AuthService;
+import com.hiswork.backend.util.AuthUtil;
 import com.hiswork.backend.service.HisnetLoginService;
 import com.nimbusds.openid.connect.sdk.LogoutRequest;
 import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -19,9 +21,11 @@ import java.util.Map;
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
 @Slf4j
+//@CrossOrigin(origins = "*")
 public class AuthController {
 
     private final AuthService authService;
+    private final AuthUtil authUtil;
 //    private final HisnetLoginService hisnetLoginService;
 
     //test
@@ -49,6 +53,16 @@ public class AuthController {
             log.error("로그인 실패: {}", e.getMessage(), e);
             return ResponseEntity.badRequest()
                     .body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<?> me(HttpServletRequest request) {
+        try {
+            var user = authUtil.getCurrentUser(request);
+            return ResponseEntity.ok(MeResponse.from(user));
+        } catch (Exception e) {
+            return ResponseEntity.status(401).body(Map.of("error", "인증이 필요합니다"));
         }
     }
 
