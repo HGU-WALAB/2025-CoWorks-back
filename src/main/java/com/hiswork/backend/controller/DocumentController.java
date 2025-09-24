@@ -99,7 +99,8 @@ public class DocumentController {
             User currentUser = getCurrentUser(httpRequest);
             List<Document> documents = documentService.getDocumentsByUser(currentUser);
             List<DocumentResponse> responses = documents.stream()
-                    .map(DocumentResponse::from)
+                    .map(document -> documentService.getDocumentResponse(document.getId()))
+                    .filter(response -> response != null)
                     .collect(Collectors.toList());
             
             return ResponseEntity.ok(responses);
