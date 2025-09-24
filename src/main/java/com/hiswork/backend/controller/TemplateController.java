@@ -16,6 +16,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -145,20 +146,92 @@ public class TemplateController {
     @PutMapping("/{id}")
     public ResponseEntity<?> updateTemplate(
             @PathVariable Long id,
-            @Valid @RequestBody TemplateCreateRequest request,
             HttpServletRequest httpRequest) {
         
         try {
             User user = getCurrentUser(httpRequest);
-            Template template = templateService.updateTemplate(id, request, user);
             
-            log.info("템플릿 수정 성공: {} by {}", template.getName(), user.getId());
-            return ResponseEntity.ok(TemplateResponse.from(template));
+            // Content-Type 확인
+            String contentType = httpRequest.getContentType();
+            
+            if (contentType != null && contentType.contains("multipart/form-data")) {
+                // Multipart 요청 처리 (파일 포함)
+                return handleMultipartUpdate(id, httpRequest, user);
+            } else {
+                // JSON 요청 처리 (메타데이터만)
+                return handleJsonUpdate(id, httpRequest, user);
+            }
+            
         } catch (Exception e) {
             log.error("템플릿 수정 실패: {}", e.getMessage(), e);
             return ResponseEntity.badRequest()
                     .body(Map.of("error", e.getMessage()));
         }
+    }
+    
+    private ResponseEntity<?> handleJsonUpdate(Long id, HttpServletRequest httpRequest, User user) throws Exception {
+        // JSON 본문 읽기
+        StringBuilder jsonBuilder = new StringBuilder();
+        try (java.io.BufferedReader reader = httpRequest.getReader()) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                jsonBuilder.append(line);
+            }
+        }
+        
+        // JSON 파싱
+        com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        com.fasterxml.jackson.databind.JsonNode jsonNode = objectMapper.readTree(jsonBuilder.toString());
+        
+        // 기존 템플릿 조회
+        Template existingTemplate = templateService.getTemplateById(id)
+                .orElseThrow(() -> new RuntimeException("템플릿을 찾을 수 없습니다."));
+        
+        // 권한 확인
+        if (!existingTemplate.getCreatedBy().getId().equals(user.getId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "템플릿을 수정할 권한이 없습니다."));
+        }
+        
+        // 기본 폴더 처리
+        Folder defaultFolder = null;
+        if (jsonNode.has("defaultFolderId") && !jsonNode.get("defaultFolderId").isNull()) {
+            String defaultFolderId = jsonNode.get("defaultFolderId").asText();
+            if (!defaultFolderId.trim().isEmpty()) {
+                try {
+                    UUID folderId = UUID.fromString(defaultFolderId);
+                    defaultFolder = folderRepository.findById(folderId).orElse(null);
+                    if (defaultFolder == null) {
+                        log.warn("지정된 폴더를 찾을 수 없습니다: {}", defaultFolderId);
+                    }
+                } catch (IllegalArgumentException e) {
+                    log.warn("잘못된 폴더 ID 형식: {}", defaultFolderId);
+                }
+            }
+        }
+        
+        // 템플릿 정보 업데이트
+        if (jsonNode.has("name")) {
+            existingTemplate.setName(jsonNode.get("name").asText());
+        }
+        if (jsonNode.has("description")) {
+            existingTemplate.setDescription(jsonNode.get("description").asText());
+        }
+        if (jsonNode.has("coordinateFields")) {
+            existingTemplate.setCoordinateFields(jsonNode.get("coordinateFields").asText());
+        }
+        existingTemplate.setDefaultFolder(defaultFolder);
+        
+        Template updatedTemplate = templateService.savePdfTemplate(existingTemplate);
+        
+        log.info("템플릿 수정 성공 (JSON): {} by {}", updatedTemplate.getName(), user.getId());
+        return ResponseEntity.ok(TemplateResponse.from(updatedTemplate));
+    }
+    
+    private ResponseEntity<?> handleMultipartUpdate(Long id, HttpServletRequest httpRequest, User user) throws Exception {
+        // Multipart 처리는 기존과 동일하게 유지
+        log.info("Multipart 업데이트는 아직 구현되지 않음");
+        return ResponseEntity.badRequest().body(Map.of("error", "Multipart 업데이트는 지원하지 않습니다."));
     }
     
     @DeleteMapping("/{id}")
@@ -169,6 +242,10 @@ public class TemplateController {
             
             log.info("템플릿 삭제 성공: {} by {}", id, user.getId());
             return ResponseEntity.noContent().build();
+        } catch (DataIntegrityViolationException e) {
+            log.error("템플릿 삭제 실패 - 참조 제약 조건 위반: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "이 템플릿으로 생성된 문서가 있어서 삭제할 수 없습니다. 관리자에게 문의하세요."));
         } catch (Exception e) {
             log.error("템플릿 삭제 실패: {}", e.getMessage(), e);
             return ResponseEntity.badRequest()
@@ -176,6 +253,66 @@ public class TemplateController {
         }
     }
     
+    @PostMapping("/{id}/duplicate")
+    public ResponseEntity<?> duplicateTemplate(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> request,
+            HttpServletRequest httpRequest) {
+        
+        try {
+            User user = getCurrentUser(httpRequest);
+            String newName = request.get("name");
+            String newDescription = request.get("description");
+            String newFolderId = request.get("folderId");
+            
+            if (newName == null || newName.trim().isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "템플릿 이름이 필요합니다."));
+            }
+            
+            // 원본 템플릿 조회
+            Template originalTemplate = templateService.getTemplateById(id)
+                    .orElseThrow(() -> new RuntimeException("템플릿을 찾을 수 없습니다."));
+            
+            // 새 기본 폴더 처리
+            Folder newDefaultFolder = null;
+            if (newFolderId != null && !newFolderId.trim().isEmpty()) {
+                try {
+                    UUID folderId = UUID.fromString(newFolderId);
+                    newDefaultFolder = folderRepository.findById(folderId).orElse(null);
+                    if (newDefaultFolder == null) {
+                        log.warn("지정된 폴더를 찾을 수 없습니다: {}", newFolderId);
+                    }
+                } catch (IllegalArgumentException e) {
+                    log.warn("잘못된 폴더 ID 형식: {}", newFolderId);
+                }
+            }
+            
+            // 새 템플릿 생성 (복제)
+            Template duplicatedTemplate = Template.builder()
+                    .name(newName.trim())
+                    .description(newDescription != null ? newDescription.trim() : originalTemplate.getDescription())
+                    .isPublic(originalTemplate.getIsPublic())
+                    .pdfFilePath(originalTemplate.getPdfFilePath()) // PDF 파일 경로 복사
+                    .pdfImagePath(originalTemplate.getPdfImagePath()) // PDF 이미지 경로 복사
+                    .coordinateFields(originalTemplate.getCoordinateFields()) // 좌표 필드 복사
+                    .defaultFolder(newDefaultFolder != null ? newDefaultFolder : originalTemplate.getDefaultFolder()) // 새 폴더 또는 원본 폴더
+                    .createdBy(user) // 복제를 실행한 사용자로 설정
+                    .build();
+            
+            Template savedTemplate = templateService.savePdfTemplate(duplicatedTemplate);
+            
+            log.info("템플릿 복제 성공: {} -> {} by {}", originalTemplate.getName(), savedTemplate.getName(), user.getId());
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(TemplateResponse.from(savedTemplate));
+                    
+        } catch (Exception e) {
+            log.error("템플릿 복제 실패: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", e.getMessage()));
+        }
+    }
+
     private User getCurrentUser(HttpServletRequest request) {
         try {
             // JWT 토큰에서 사용자 정보 추출 시도

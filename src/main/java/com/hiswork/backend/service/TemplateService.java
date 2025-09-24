@@ -2,8 +2,10 @@ package com.hiswork.backend.service;
 
 import com.hiswork.backend.domain.Template;
 import com.hiswork.backend.domain.User;
+import com.hiswork.backend.domain.Folder;
 import com.hiswork.backend.dto.TemplateCreateRequest;
 import com.hiswork.backend.repository.TemplateRepository;
+import com.hiswork.backend.repository.FolderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -11,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -19,6 +22,7 @@ import java.util.Optional;
 public class TemplateService {
     
     private final TemplateRepository templateRepository;
+    private final FolderRepository folderRepository;
     
     public Template savePdfTemplate(Template template) {
         return templateRepository.save(template);
@@ -47,6 +51,17 @@ public class TemplateService {
 //        template.setPdfFilePath(request.getPdfFilePath()); // PDF 파일 경로는 수정하지 않음
 //        template.setPdfImagePath(request.getPdfImagePath()); // PDF 이미지 경로는 수정하지 않음
         template.setCoordinateFields(request.getCoordinateFields()); // 누락된 필드 추가
+        
+        // 기본 폴더 업데이트
+        if (request.getDefaultFolderId() != null) {
+            Folder defaultFolder = folderRepository.findById(request.getDefaultFolderId()).orElse(null);
+            template.setDefaultFolder(defaultFolder);
+            if (defaultFolder == null) {
+                log.warn("지정된 폴더를 찾을 수 없습니다: {}", request.getDefaultFolderId());
+            }
+        } else {
+            template.setDefaultFolder(null);
+        }
         
         return templateRepository.save(template);
     }
