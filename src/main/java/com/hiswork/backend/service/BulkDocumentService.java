@@ -273,36 +273,6 @@ public class BulkDocumentService {
                                                      BulkCommitRequest.OnDuplicateAction onDuplicate) {
         
         String documentTitle = item.getDocumentTitle();
-        // 중복 제목 허용: 어떤 정책도 적용하지 않음
-        
-        // 중복 제목 처리
-        if (documentRepository.existsByTitle(documentTitle)) {
-            switch (onDuplicate) {
-                case SKIP -> {
-                    item.setProcessingStatus(BulkStagingItem.ProcessingStatus.SKIPPED);
-                    item.setProcessingReason("중복 제목으로 건너뜀: " + documentTitle);
-                    bulkStagingItemRepository.save(item);
-                    
-                    return BulkCommitResponse.CommitItem.builder()
-                            .row(item.getRowNumber())
-                            .studentId(item.getStudentId())
-                            .name(item.getName())
-                            .email(item.getEmail())
-                            .course(item.getCourse())
-                            .documentTitle(documentTitle)
-                            .status(BulkCommitResponse.CommitItem.CommitStatus.SKIPPED)
-                            .reason("중복 제목으로 건너뜀")
-                            .build();
-                }
-                case UPDATE_TITLE -> {
-                    documentTitle = generateUniqueTitle(documentTitle);
-                    item.setDocumentTitle(documentTitle);
-                }
-                case ERROR -> {
-                    throw new RuntimeException("중복된 제목: " + documentTitle);
-                }
-            }
-        }
         
         // 문서 생성
         ObjectNode initialData = initializeDocumentData(template);
@@ -328,17 +298,13 @@ public class BulkDocumentService {
         if (existingUser.isPresent()) {
             // 등록된 사용자 - 즉시 할당
             roleBuilder
-                    .assignedUserId(existingUser.get().getId())
-                    .assignmentStatus(DocumentRole.AssignmentStatus.ACTIVE)
-                    .claimStatus(DocumentRole.ClaimStatus.CLAIMED);
+                    .assignedUserId(existingUser.get().getId());
         } else {
             // 미등록 사용자 - 가입 대기 할당
             roleBuilder
                     .assignedUserId(item.getStudentId())
                     .pendingEmail(item.getEmail())
-                    .pendingName(item.getName())
-                    .assignmentStatus(DocumentRole.AssignmentStatus.PENDING)
-                    .claimStatus(DocumentRole.ClaimStatus.PENDING);
+                    .pendingName(item.getName());
         }
         
         DocumentRole documentRole = roleBuilder.build();
@@ -391,7 +357,7 @@ public class BulkDocumentService {
     }
 
     private String generateDocumentTitle(ExcelParsingService.StudentRecord record) {
-        return record.getName() + "_" + record.getCourse() + " 근무일지";
+        return record.getName() + "_" + record.getCourse() + "_근무일지" ;
     }
     
     private String generateUniqueTitle(String baseTitle) {
@@ -412,10 +378,9 @@ public class BulkDocumentService {
         
         return Optional.empty();
     }
-    
-    /**
-     * BulkStagingItem을 응답용 StagingItem으로 변환
-     */
+
+
+    // BulkStagingItem을 응답용 StagingItem으로 변환
     private BulkStagingItemsResponse.StagingItem convertToStagingItem(BulkStagingItem item) {
         // 사용자 등록 상태 확인
         Optional<User> existingUser = findUserByEmailOrId(item.getEmail(), item.getStudentId());
