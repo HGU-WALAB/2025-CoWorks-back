@@ -68,7 +68,6 @@ public class DocumentResponse {
         private String role;
         private String assignedUserName;
         private String assignedUserEmail;
-        private Boolean canAssignReviewer; // 검토자 지정 권한
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
         
@@ -78,7 +77,6 @@ public class DocumentResponse {
                     .role(documentRole.getTaskRole().name())
                     .assignedUserName(documentRole.getPendingName())
                     .assignedUserEmail(documentRole.getPendingEmail())
-                    .canAssignReviewer(documentRole.getCanAssignReviewer())
                     .createdAt(documentRole.getCreatedAt())
                     .updatedAt(documentRole.getUpdatedAt())
                     .build();
