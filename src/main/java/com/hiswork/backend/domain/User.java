@@ -26,7 +26,7 @@ public class User {
     private String name;
 
     // 이메일
-    @Column(name = "email", length = 320)
+    @Column(name = "email", length = 320, unique = true)
     private String email;
 
     // 학년
@@ -70,7 +70,7 @@ public class User {
 
     public static User from(AuthDto dto) {
         return User.builder()
-                .id(java.util.UUID.randomUUID().toString()) // UUID를 String으로 생성
+                .id(dto.getUniqueId())
                 .name(dto.getName())
                 .email(dto.getEmail())
                 .department(dto.getDepartment())
