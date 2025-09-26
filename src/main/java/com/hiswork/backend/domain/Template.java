@@ -38,6 +38,9 @@ public class Template {
     @Column(columnDefinition = "TEXT")
     private String coordinateFields; // JSON 형태로 저장된 좌표 필드 정보
     
+    // 이 템플릿으로 생성되는 문서의 만료일 (선택적)
+    private LocalDateTime deadline;
+    
     // 이 템플릿으로 생성되는 문서의 기본 폴더 (선택적)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "default_folder_id")

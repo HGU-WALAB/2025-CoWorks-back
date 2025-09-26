@@ -22,6 +22,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -75,6 +76,7 @@ public class TemplateController {
             @RequestParam(value = "description", required = false) String description,
             @RequestParam(value = "isPublic", defaultValue = "false") Boolean isPublic,
             @RequestParam(value = "coordinateFields", required = false) String coordinateFields,
+            @RequestParam(value = "deadline", required = false) String deadline,
             @RequestParam(value = "defaultFolderId", required = false) String defaultFolderId,
             HttpServletRequest httpRequest) {
         
@@ -98,6 +100,16 @@ public class TemplateController {
                 }
             }
             
+            // 만료일 파싱
+            LocalDateTime deadlineDateTime = null;
+            if (deadline != null && !deadline.trim().isEmpty()) {
+                try {
+                    deadlineDateTime = LocalDateTime.parse(deadline);
+                } catch (Exception e) {
+                    log.warn("잘못된 만료일 형식: {}", deadline, e);
+                }
+            }
+            
             // PDF 기반 템플릿 생성
             Template template = Template.builder()
                     .name(templateName)
@@ -106,6 +118,7 @@ public class TemplateController {
                     .pdfFilePath(uploadResult.getPdfFilePath())
                     .pdfImagePath(uploadResult.getPdfImagePath())
                     .coordinateFields(coordinateFields)  // coordinateFields 추가
+                    .deadline(deadlineDateTime)  // 만료일 추가
                     .defaultFolder(defaultFolder)  // 기본 폴더 추가
                     .createdBy(user)
                     .build();
@@ -219,6 +232,19 @@ public class TemplateController {
         }
         if (jsonNode.has("coordinateFields")) {
             existingTemplate.setCoordinateFields(jsonNode.get("coordinateFields").asText());
+        }
+        if (jsonNode.has("deadline")) {
+            String deadlineStr = jsonNode.get("deadline").asText();
+            if (deadlineStr != null && !deadlineStr.trim().isEmpty()) {
+                try {
+                    LocalDateTime deadlineDateTime = LocalDateTime.parse(deadlineStr);
+                    existingTemplate.setDeadline(deadlineDateTime);
+                } catch (Exception e) {
+                    log.warn("잘못된 만료일 형식: {}", deadlineStr, e);
+                }
+            } else {
+                existingTemplate.setDeadline(null);
+            }
         }
         existingTemplate.setDefaultFolder(defaultFolder);
         

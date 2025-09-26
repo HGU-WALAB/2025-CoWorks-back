@@ -312,6 +312,7 @@ public class BulkDocumentService {
                 .template(template)
                 .status(Document.DocumentStatus.EDITING)
                 .data(initialData)
+                .deadline(template.getDeadline()) // 템플릿의 만료일 상속
                 .folder(template.getDefaultFolder())
                 .build();
         
