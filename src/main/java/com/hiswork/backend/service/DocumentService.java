@@ -9,7 +9,6 @@ import com.hiswork.backend.domain.DocumentRole;
 import com.hiswork.backend.domain.DocumentStatusLog;
 import com.hiswork.backend.domain.Template;
 import com.hiswork.backend.domain.User;
-import com.hiswork.backend.dto.BulkDocumentCreateResponse;
 import com.hiswork.backend.dto.DocumentResponse;
 import com.hiswork.backend.dto.DocumentStatusLogResponse;
 import com.hiswork.backend.dto.DocumentUpdateRequest;
@@ -53,7 +52,7 @@ public class DocumentService {
     public Document createDocument(Long templateId, User creator, String editorEmail, String title) {
         Template template = templateRepository.findById(templateId)
                 .orElseThrow(() -> new RuntimeException("Template not found"));
-
+        
         ObjectNode initialData = initializeDocumentData(template);
         
         Document document = Document.builder()
@@ -71,7 +70,6 @@ public class DocumentService {
                 .document(document)
                 .assignedUserId(creator.getId())
                 .taskRole(DocumentRole.TaskRole.CREATOR)
-                .canAssignReviewer(true) // 생성자에게 검토자 지정 권한 부여
                 .build();
         
         documentRoleRepository.save(creatorRole);
@@ -86,7 +84,6 @@ public class DocumentService {
                     .document(document)
                     .assignedUserId(editor.getId())
                     .taskRole(DocumentRole.TaskRole.EDITOR)
-                    .canAssignReviewer(true) // 편집자에게 검토자 지정 권한 부여
                     .build();
             
             documentRoleRepository.save(editorRole);
@@ -162,7 +159,7 @@ public class DocumentService {
         if (document.getStatus() == Document.DocumentStatus.DRAFT) {
             changeDocumentStatus(document, Document.DocumentStatus.EDITING, user, "문서 편집 시작");
             document = documentRepository.save(document);
-
+            
             log.info("문서 편집 시작 - 문서 ID: {}, 사용자: {}, 상태: {} -> EDITING", 
                     documentId, user.getId(), "DRAFT");
         }
@@ -187,7 +184,7 @@ public class DocumentService {
         // 상태를 READY_FOR_REVIEW로 변경
         changeDocumentStatus(document, Document.DocumentStatus.READY_FOR_REVIEW, user, "검토 요청");
         document = documentRepository.save(document);
-
+        
         return document;
     }
     
@@ -209,7 +206,7 @@ public class DocumentService {
                 .build();
         
         documentRoleRepository.save(editorRole);
-
+        
         // 문서 상태를 EDITING으로 변경
         changeDocumentStatus(document, Document.DocumentStatus.EDITING, editor, "편집자 재할당");
         document = documentRepository.save(document);
@@ -227,28 +224,15 @@ public class DocumentService {
         log.info("문서 정보 - ID: {}, 상태: {}, 생성자: {}", 
                 document.getId(), document.getStatus(), document.getTemplate().getCreatedBy().getId());
         
-        // 검토자 할당 권한 확인
+        // 검토자 할당 권한 확인 - 생성자 또는 편집자 가능
         boolean isCreator = isCreator(document, assignedBy);
-        boolean hasAssignReviewerPermission = false;
+        boolean isEditor = isEditor(document, assignedBy);
         
-        if (isCreator) {
-            // 생성자는 항상 검토자 할당 가능
-            hasAssignReviewerPermission = true;
-        } else {
-            // 편집자인 경우 canAssignReviewer 권한 확인
-        Optional<DocumentRole> editorRole = documentRoleRepository.findByDocumentAndUserAndRole(
-                    documentId, assignedBy.getId(), DocumentRole.TaskRole.EDITOR);
-            
-            if (editorRole.isPresent() && Boolean.TRUE.equals(editorRole.get().getCanAssignReviewer())) {
-                hasAssignReviewerPermission = true;
-            }
-        }
+        log.info("권한 확인 - 요청자: {}, 생성자 여부: {}, 편집자 여부: {}", 
+                assignedBy.getId(), isCreator, isEditor);
         
-        log.info("권한 확인 - 요청자: {}, 생성자 여부: {}, 검토자 할당 권한: {}", 
-                assignedBy.getId(), isCreator, hasAssignReviewerPermission);
-        
-        if (!hasAssignReviewerPermission) {
-            throw new RuntimeException("검토자를 할당할 권한이 없습니다. 생성자이거나 검토자 지정 권한이 있는 편집자만 가능합니다.");
+        if (!isCreator && !isEditor) {
+            throw new RuntimeException("검토자를 할당할 권한이 없습니다. 생성자 또는 편집자만 가능합니다.");
         }
         
         User reviewer = getUserOrCreate(reviewerEmail, "Reviewer User");
@@ -262,7 +246,6 @@ public class DocumentService {
                 .document(document)
                 .assignedUserId(reviewer.getId())
                 .taskRole(DocumentRole.TaskRole.REVIEWER)
-                .canAssignReviewer(false) // 검토자는 기본적으로 검토자 지정 권한 없음
                 .build();
         
         documentRoleRepository.save(reviewerRole);
@@ -326,7 +309,6 @@ public class DocumentService {
                             .role(role.getTaskRole().name())
                             .assignedUserName(userName)
                             .assignedUserEmail(userEmail)
-                            .canAssignReviewer(role.getCanAssignReviewer())
                             .createdAt(role.getCreatedAt())
                             .updatedAt(role.getUpdatedAt())
                             .build();
@@ -418,7 +400,7 @@ public class DocumentService {
         // 상태를 READY_FOR_REVIEW로 변경
         changeDocumentStatus(document, Document.DocumentStatus.READY_FOR_REVIEW, user, "문서 업데이트 후 검토 대기");
         document = documentRepository.save(document);
-
+        
         return document;
     }
     
@@ -470,11 +452,11 @@ public class DocumentService {
         // 상태를 REJECTED로 변경
         changeDocumentStatus(document, Document.DocumentStatus.REJECTED, user, reason != null ? reason : "문서 반려");
         document = documentRepository.save(document);
-
+        
 
         documentRoleRepository.findByDocumentAndRole(documentId, DocumentRole.TaskRole.REVIEWER)
                 .ifPresent(existingRole -> documentRoleRepository.delete(existingRole));
-
+        
         return document;
     }
     
@@ -624,6 +606,6 @@ public class DocumentService {
             document.setStatus(newStatus);
             documentRepository.save(document);
             logStatusChange(document, newStatus, changedBy, comment);
-        }
+         }
     }
 } 

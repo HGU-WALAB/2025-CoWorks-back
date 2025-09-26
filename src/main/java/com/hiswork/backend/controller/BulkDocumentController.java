@@ -30,7 +30,7 @@ public class BulkDocumentController {
     private final BulkStagingRepository bulkStagingRepository;
     private final AuthUtil authUtil;
     
-    // 1. 엑셀 파일 업로드 및 데이터 임시저장
+    // 엑셀 파일 업로드 및 데이터 임시저장
     @PostMapping("/preview")
     @RequireFolderAccess
     public ResponseEntity<?> createPreview(
@@ -73,7 +73,7 @@ public class BulkDocumentController {
         }
     }
     
-    // 2. 엑셀 파일 문서 생성 확정 (preview -> commit)
+    // 엑셀 파일 문서 생성 확정 (preview -> commit)
     @PostMapping("/commit")
     @RequireFolderAccess
     public ResponseEntity<?> commitBulkCreation(
@@ -102,7 +102,7 @@ public class BulkDocumentController {
         }
     }
     
-     // 3. 스테이징 상태 확인
+     // 스테이징 상태 확인
     @GetMapping("/staging/{stagingId}/status")
     @RequireFolderAccess
     public ResponseEntity<?> getStagingStatus(
@@ -177,7 +177,7 @@ public class BulkDocumentController {
         }
     }
     
-    // 4. 파일 업로드 취소 (preview -> cancel)
+    // 파일 업로드 취소 (preview -> cancel)
     @PostMapping("/cancel")
     @RequireFolderAccess
     public ResponseEntity<?> cancelBulkUpload(
@@ -189,14 +189,10 @@ public class BulkDocumentController {
             
             // 1. 사용자 인증
             User currentUser = getCurrentUser(httpRequest);
-            
             // 2. 업로드 취소
             BulkCancelResponse response = bulkDocumentService.cancelBulkUpload(request, currentUser);
-            
             log.info("대량 업로드 취소 완료 - 스테이징 ID: {}", request.getStagingId());
-            
             return ResponseEntity.ok(response);
-            
         } catch (Exception e) {
             log.error("대량 업로드 취소 실패: {}", e.getMessage(), e);
             return ResponseEntity.badRequest()
