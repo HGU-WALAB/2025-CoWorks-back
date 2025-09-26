@@ -97,6 +97,7 @@ public class DocumentResponse {
         private String pdfFilePath;
         private String pdfImagePath;
         private String coordinateFields; // JSON 형태로 저장된 좌표 필드 정보
+        private LocalDateTime deadline; // 만료일 추가
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
         
@@ -109,6 +110,7 @@ public class DocumentResponse {
                     .pdfFilePath(template.getPdfFilePath())
                     .pdfImagePath(template.getPdfImagePath())
                     .coordinateFields(template.getCoordinateFields())
+                    .deadline(template.getDeadline()) // 만료일 추가
                     .createdAt(template.getCreatedAt())
                     .updatedAt(template.getUpdatedAt())
                     .build();

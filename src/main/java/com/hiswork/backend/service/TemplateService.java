@@ -51,6 +51,7 @@ public class TemplateService {
 //        template.setPdfFilePath(request.getPdfFilePath()); // PDF 파일 경로는 수정하지 않음
 //        template.setPdfImagePath(request.getPdfImagePath()); // PDF 이미지 경로는 수정하지 않음
         template.setCoordinateFields(request.getCoordinateFields()); // 누락된 필드 추가
+        template.setDeadline(request.getDeadline()); // 만료일 업데이트
         
         // 기본 폴더 업데이트
         if (request.getDefaultFolderId() != null) {

@@ -61,6 +61,7 @@ public class DocumentService {
                 .title(title)
                 .data(initialData)
                 .status(Document.DocumentStatus.DRAFT)
+                .deadline(template.getDeadline())  // 템플릿의 만료일 상속
                 .folder(template.getDefaultFolder())  // 템플릿의 기본 폴더 적용
                 .build();
         
