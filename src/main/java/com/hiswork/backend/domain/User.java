@@ -26,7 +26,7 @@ public class User {
     private String name;
 
     // 이메일
-    @Column(name = "email", length = 320)
+    @Column(name = "email", length = 320, unique = true)
     private String email;
 
     // 학년
@@ -62,9 +62,6 @@ public class User {
     // 프로필 이미지 URL
     private String profileImageUrl;
 
-    // 서명 이미지 URL
-    private String signatureImageUrl;
-
     // 폴더 접근 권한
     @Column(name = "has_folder_access", nullable = false)
     @Builder.Default
@@ -73,7 +70,7 @@ public class User {
 
     public static User from(AuthDto dto) {
         return User.builder()
-                .id(java.util.UUID.randomUUID().toString()) // UUID를 String으로 생성
+                .id(dto.getUniqueId())
                 .name(dto.getName())
                 .email(dto.getEmail())
                 .department(dto.getDepartment())
@@ -81,8 +78,8 @@ public class User {
                 .major2(dto.getMajor2())
                 .grade(dto.getGrade())
                 .semester(dto.getSemester())
-               .role(Role.USER) // 기본 상태를 USER로 설정
-               .position(Position.학생) // 기본값을 학생으로 설정
+                .role(Role.USER) // 기본 상태를 USER로 설정
+                .position(Position.학생) // 기본값을 학생으로 설정
                 .build();
     }
 

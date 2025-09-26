@@ -10,14 +10,15 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
 
-// import java.security.Key;
-// import java.util.Optional;
+ import java.security.Key;
+ import java.util.Optional;
 @Service
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
@@ -65,7 +66,14 @@ public class AuthService {
 
         log.info("사용자 객체 생성 완료 - ID: {}, 이메일: {}", user.getId(), user.getEmail());
 
-        user = userRepository.save(user);
+        try {
+            user = userRepository.save(user);
+        } catch (DataIntegrityViolationException e) {
+            // 동시 요청으로 인한 이메일 유니크 충돌 시 재조회 후 그대로 진행
+            log.warn("이메일 유니크 충돌 감지, 재조회 수행: {}", user.getEmail());
+            user = userRepository.findByEmail(user.getEmail())
+                    .orElseThrow(() -> e);
+        }
         log.info("사용자 데이터베이스 저장 완료 - ID: {}, 이메일: {}", user.getId(), user.getEmail());
 
         // 임시 할당된 문서들을 실제 사용자에게 연결
@@ -119,7 +127,6 @@ public class AuthService {
         for (DocumentRole role : pendingRoles) {
             // 임시 할당을 실제 사용자로 전환
             role.setAssignedUserId(newUser.getId());
-            role.setAssignmentStatus(DocumentRole.AssignmentStatus.ACTIVE);
             role.setPendingEmail(null);
             role.setPendingName(null);
             
@@ -133,44 +140,44 @@ public class AuthService {
     }
 
     // 히즈넷 로그인
-//    @Transactional
-//    public AuthDto login(AuthDto authDto) {
-//        // 사용자 찾기
-//        Optional<User> user = userRepository.findByUniqueId(authDto.getUniqueId());
-//        User loggedInUser = user.orElseGet(() -> User.from(authDto));
-//        userRepository.save(loggedInUser);
-//
-//        Key key = JwtUtil.getSigningKey(SECRET_KEY);
-//
-//        String accessToken_hiswork = JwtUtil.createToken(
-//                loggedInUser.getUniqueId(),
-//                loggedInUser.getName(),
-//                loggedInUser.getDepartment(),
-//                key
-//        );
-//
-//        log.info("✅ Generated AccessToken: {}", accessToken_hiswork);
-//
-//        // JWT 토큰과 사용자 정보 반환
-//        return AuthDto.builder()
-//                .token(accessToken_hiswork) // JWT 토큰
-//                .uniqueId(loggedInUser.getUniqueId())
-//                .name(loggedInUser.getName())
-//                .email(loggedInUser.getEmail()) // 편집자/검토자 찾을 때 필요할 것 같아서 추가
-//                .department(loggedInUser.getDepartment())
-//                .build();
-//    }
+    @Transactional
+    public AuthDto login(AuthDto authDto) {
+        // 사용자 찾기
+        Optional<User> user = userRepository.findById(authDto.getUniqueId());
+        User loggedInUser = user.orElseGet(() -> User.from(authDto));
+        userRepository.save(loggedInUser);
 
-//    // AccessToken 생성
-//    public String createAccessToken(String uniqueId, String name, String department) {
-//        Key key = JwtUtil.getSigningKey(SECRET_KEY);
-//        return JwtUtil.createToken(uniqueId, name, department, key);
-//    }
-//
-//    // RefreshToken 생성
-//    public String createRefreshToken(String uniqueId, String name, String department) {
-//        Key key = JwtUtil.getSigningKey(SECRET_KEY);
-//        return JwtUtil.createRefreshToken(uniqueId, name, key);
-//    }
+        Key key = JwtUtil.getSigningKey(SECRET_KEY);
+
+        String accessToken_hiswork = JwtUtil.createToken(
+                loggedInUser.getId(),
+                loggedInUser.getName(),
+                loggedInUser.getDepartment(),
+                key
+        );
+
+        log.info("✅ Generated AccessToken: {}", accessToken_hiswork);
+
+        // JWT 토큰과 사용자 정보 반환
+        return AuthDto.builder()
+                .token(accessToken_hiswork) // JWT 토큰
+                .uniqueId(loggedInUser.getId())
+                .name(loggedInUser.getName())
+                .email(loggedInUser.getEmail()) // 편집자/검토자 찾을 때 필요할 것 같아서 추가
+                .department(loggedInUser.getDepartment())
+                .build();
+    }
+
+    // AccessToken 생성
+    public String createAccessToken(String uniqueId, String name, String department) {
+        Key key = JwtUtil.getSigningKey(SECRET_KEY);
+        return JwtUtil.createToken(uniqueId, name, department, key);
+    }
+
+    // RefreshToken 생성
+    public String createRefreshToken(String uniqueId, String name, String department) {
+        Key key = JwtUtil.getSigningKey(SECRET_KEY);
+        return JwtUtil.createRefreshToken(uniqueId, name, key);
+    }
 
 } 

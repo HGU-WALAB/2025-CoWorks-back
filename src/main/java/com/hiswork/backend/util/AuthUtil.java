@@ -17,7 +17,6 @@ import io.jsonwebtoken.Claims;
 @Slf4j
 public class AuthUtil {
     
-    
     private final UserRepository userRepository;
     
     @Value("${jwt.secret_key}")
@@ -30,25 +29,26 @@ public class AuthUtil {
         }
         
         Key key = JwtUtil.getSigningKey(SECRET_KEY);
-        
+
         if (!JwtUtil.validateToken(token, key)) {
             throw new RuntimeException("유효하지 않은 토큰입니다.");
         }
         
-                // String uniqueId = JwtUtil.getUniqueIdFromToken(token, key);
-        // return userRepository.findByUniqueId(uniqueId)
-        //         .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다.
-        //         "));
-        // JWT 토큰에서 이메일 추출 (subject에 이메일이 저장됨)
+        String uniqueId = JwtUtil.getUniqueIdFromToken(token, key);
+        if (uniqueId != null && !uniqueId.isBlank()) {
+            return userRepository.findById(uniqueId)
+                    .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다: uniqueId=" + uniqueId));
+        }
+
+        // 2) 일반 토큰: subject(email)
         Claims claims = JwtUtil.getClaims(token, key);
         String email = claims.getSubject();
         log.info("JWT 토큰에서 추출된 이메일: {}", email);
-        
-        if (email == null) {
+
+        if (email == null || email.isBlank()) {
             throw new RuntimeException("JWT 토큰에서 이메일을 찾을 수 없습니다.");
         }
-        
-        // 이메일로 사용자 검색
+
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("이메일로 사용자를 찾을 수 없습니다: " + email));
     }

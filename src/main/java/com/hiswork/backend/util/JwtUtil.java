@@ -13,8 +13,8 @@ import java.util.Date;
 @Component
 @Slf4j
 public class JwtUtil {
-//    private static final long EXPIRE_TIME_MS = 1000 * 60 * 60 * 24 * 7;  // 7 days - 개발 환경 편의성을 위해 임시로 수정
-//    private static final long REFRESH_EXPIRE_TIME_MS = 1000 * 60 * 60 * 24 * 7;  // 7 days
+    private static final long EXPIRE_TIME_MS = 1000 * 60 * 60 * 24 * 7;  // 7 days - 개발 환경 편의성을 위해 임시로 수정
+    private static final long REFRESH_EXPIRE_TIME_MS = 1000 * 60 * 60 * 24 * 7;  // 7 days
 
 
     @Value("${jwt.secret_key}")
@@ -59,35 +59,35 @@ public class JwtUtil {
     }
 
 //    // JWT access token 발급
-//    public static String createToken(String uniqueId, String name, String department, Key secretKey) {
-//        Claims claims = Jwts.claims();
-//        claims.put("uniqueId", uniqueId);
-//        claims.put("name", name);
-//        claims.put("department", department);
-//        log.info("Creating JWT access token for user: {}", name);
-//
-//        return Jwts.builder()
-//                .setClaims(claims)
-//                .setIssuedAt(new Date(System.currentTimeMillis()))
-//                .setExpiration(new Date(System.currentTimeMillis() + EXPIRE_TIME_MS))
-//                .signWith(secretKey, SignatureAlgorithm.HS256)
-//                .compact();
-//    }
+    public static String createToken(String uniqueId, String name, String department, Key secretKey) {
+        Claims claims = Jwts.claims();
+        claims.put("uniqueId", uniqueId);
+        claims.put("name", name);
+        claims.put("department", department);
+        log.info("Creating JWT access token for user: {}", name);
 
-//    // JWT refresh token 발급
-//    public static String createRefreshToken(String uniqueId, String name, Key secretKey) {
-//        Claims claims = Jwts.claims();
-//        claims.put("uniqueId", uniqueId);
-//        claims.put("name", name);
-//        log.info("Creating JWT refresh token for user: {}", name);
-//
-//        return Jwts.builder()
-//                .setClaims(claims)
-//                .setIssuedAt(new Date(System.currentTimeMillis()))
-//                .setExpiration(new Date(System.currentTimeMillis() + REFRESH_EXPIRE_TIME_MS))
-//                .signWith(secretKey, SignatureAlgorithm.HS256)
-//                .compact();
-//    }
+        return Jwts.builder()
+                .setClaims(claims)
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(new Date(System.currentTimeMillis() + EXPIRE_TIME_MS))
+                .signWith(secretKey, SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+    // JWT refresh token 발급
+    public static String createRefreshToken(String uniqueId, String name, Key secretKey) {
+        Claims claims = Jwts.claims();
+        claims.put("uniqueId", uniqueId);
+        claims.put("name", name);
+        log.info("Creating JWT refresh token for user: {}", name);
+
+        return Jwts.builder()
+                .setClaims(claims)
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(new Date(System.currentTimeMillis() + REFRESH_EXPIRE_TIME_MS))
+                .signWith(secretKey, SignatureAlgorithm.HS256)
+                .compact();
+    }
 
     // JWT 토큰 검증
     public static boolean validateToken(String token, Key secretKey) {

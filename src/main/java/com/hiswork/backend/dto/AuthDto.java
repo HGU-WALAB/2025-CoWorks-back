@@ -21,9 +21,9 @@ public class AuthDto {
     private Integer semester;
 
     // LoginRequest -> AuthDto로 변환
-//    public static AuthDto from(LoginRequest request) {
-//        return AuthDto.builder().
-//                hisnetToken(request.getHisnetToken())
-//                .build();
-//    }
+    public static AuthDto from(LoginRequest request) {
+        return AuthDto.builder().
+                hisnetToken(request.getHisnetToken())
+                .build();
+    }
 }
