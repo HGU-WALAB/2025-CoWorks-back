@@ -68,8 +68,10 @@ public class DocumentResponse {
         private String role;
         private String assignedUserName;
         private String assignedUserEmail;
+        private LocalDateTime lastViewedAt;
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
+        private Boolean isNew;
         
         public static TaskInfo from(DocumentRole documentRole) {
             return TaskInfo.builder()
@@ -77,8 +79,10 @@ public class DocumentResponse {
                     .role(documentRole.getTaskRole().name())
                     .assignedUserName(documentRole.getPendingName())
                     .assignedUserEmail(documentRole.getPendingEmail())
+                    .lastViewedAt(documentRole.getLastViewedAt())
                     .createdAt(documentRole.getCreatedAt())
                     .updatedAt(documentRole.getUpdatedAt())
+                    .isNew(documentRole.isNew())
                     .build();
         }
     }
