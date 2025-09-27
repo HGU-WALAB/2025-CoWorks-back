@@ -42,6 +42,8 @@ public class DocumentRole {
     @Column(name = "task_role", nullable = false)
     private TaskRole taskRole;
     
+    @Column(name = "last_viewed_at")
+    private LocalDateTime lastViewedAt;
     
     @CreationTimestamp
     private LocalDateTime createdAt;
@@ -51,6 +53,14 @@ public class DocumentRole {
     
     public enum TaskRole {
         CREATOR, EDITOR, REVIEWER
+    }
+    
+    /**
+     * 문서가 새로 할당되어 아직 확인하지 않은 상태인지 확인
+     * @return lastViewedAt이 null이면 true, 그렇지 않으면 false
+     */
+    public boolean isNew() {
+        return this.lastViewedAt == null;
     }
     
 } 

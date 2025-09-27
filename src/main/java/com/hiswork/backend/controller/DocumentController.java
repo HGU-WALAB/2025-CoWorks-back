@@ -416,4 +416,28 @@ public class DocumentController {
             throw new RuntimeException("인증이 필요합니다. 로그인 후 다시 시도해주세요.");
         }
     }
+    
+    /**
+     * 문서 조회 표시 API - 사용자가 문서를 조회했음을 표시
+     */
+    @PostMapping("/{id}/view")
+    public ResponseEntity<?> markDocumentAsViewed(
+            @PathVariable Long id,
+            HttpServletRequest httpRequest) {
+        
+        log.info("문서 조회 표시 요청 - DocumentId: {}", id);
+        
+        try {
+            User currentUser = getCurrentUser(httpRequest);
+            documentService.markDocumentAsViewed(id, currentUser);
+            
+            return ResponseEntity.ok()
+                    .body(Map.of("success", true, "message", "문서 조회가 표시되었습니다."));
+                    
+        } catch (Exception e) {
+            log.error("문서 조회 표시 실패 - DocumentId: {}", id, e);
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "문서 조회 표시 실패: " + e.getMessage()));
+        }
+    }
 } 

@@ -345,8 +345,10 @@ public class DocumentService {
                             .role(role.getTaskRole().name())
                             .assignedUserName(userName)
                             .assignedUserEmail(userEmail)
+                            .lastViewedAt(role.getLastViewedAt())
                             .createdAt(role.getCreatedAt())
                             .updatedAt(role.getUpdatedAt())
+                            .isNew(role.isNew()) // 새로운 할당인지 확인
                             .build();
                 })
                 .collect(Collectors.toList());
@@ -656,5 +658,31 @@ public class DocumentService {
             documentRepository.save(document);
             logStatusChange(document, newStatus, changedBy, comment);
          }
+    }
+    
+    /**
+     * 사용자가 문서를 조회했음을 표시 (lastViewedAt 업데이트)
+     */
+    @Transactional
+    public void markDocumentAsViewed(Long documentId, User user) {
+        log.info("문서 조회 표시 - DocumentId: {}, UserId: {}", documentId, user.getId());
+        
+        // 해당 문서에서 현재 사용자에게 할당된 모든 역할 찾기
+        List<DocumentRole> userRoles = documentRoleRepository
+            .findAllByDocumentAndUser(documentId, user.getId());
+            
+        if (!userRoles.isEmpty()) {
+            LocalDateTime now = LocalDateTime.now();
+            for (DocumentRole role : userRoles) {
+                role.setLastViewedAt(now);
+                documentRoleRepository.save(role);
+                log.info("문서 조회 시간 업데이트 완료 - DocumentRoleId: {}, TaskRole: {}", 
+                        role.getId(), role.getTaskRole());
+            }
+            log.info("총 {}개의 역할에 대해 조회 시간 업데이트 완료", userRoles.size());
+        } else {
+            log.warn("해당 사용자에게 할당된 문서 역할을 찾을 수 없습니다 - DocumentId: {}, UserId: {}", 
+                    documentId, user.getId());
+        }
     }
 } 
