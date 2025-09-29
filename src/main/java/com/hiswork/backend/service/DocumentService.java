@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.hiswork.backend.domain.Document;
 import com.hiswork.backend.domain.DocumentRole;
 import com.hiswork.backend.domain.DocumentStatusLog;
+import com.hiswork.backend.domain.NotificationType;
 import com.hiswork.backend.domain.Template;
 import com.hiswork.backend.domain.User;
 import com.hiswork.backend.dto.DocumentResponse;
@@ -48,6 +49,7 @@ public class DocumentService {
     private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
     private final PasswordEncoder passwordEncoder;
+    private final NotificationService notificationService;
   
     public Document createDocument(Long templateId, User creator, String editorEmail, String title) {
         Template template = templateRepository.findById(templateId)
@@ -88,6 +90,10 @@ public class DocumentService {
                     .build();
             
             documentRoleRepository.save(editorRole);
+            
+            // 편집자에게 알림 생성
+            createDocumentAssignmentNotification(editor, document, DocumentRole.TaskRole.EDITOR);
+            
             // 문서 상태를 EDITING으로 변경
             changeDocumentStatus(document, Document.DocumentStatus.EDITING, editor, "편집자 할당으로 인한 상태 변경");
             document = documentRepository.save(document);
@@ -208,6 +214,9 @@ public class DocumentService {
         
         documentRoleRepository.save(editorRole);
         
+        // 편집자에게 알림 생성
+        createDocumentAssignmentNotification(editor, document, DocumentRole.TaskRole.EDITOR);
+        
         // 문서 상태를 EDITING으로 변경
         changeDocumentStatus(document, Document.DocumentStatus.EDITING, editor, "편집자 재할당");
         document = documentRepository.save(document);
@@ -250,6 +259,9 @@ public class DocumentService {
                 .build();
         
         documentRoleRepository.save(reviewerRole);
+        
+        // 검토자에게 알림 생성
+        createDocumentAssignmentNotification(reviewer, document, DocumentRole.TaskRole.REVIEWER);
 
         mailService.sendAssignReviewerNotification(MailRequest.ReviewerAssignmentEmailCommand.builder()
                         .documentTitle(document.getTemplate().getName()) // 문서 제목도 관리 해야함.
@@ -683,6 +695,66 @@ public class DocumentService {
         } else {
             log.warn("해당 사용자에게 할당된 문서 역할을 찾을 수 없습니다 - DocumentId: {}, UserId: {}", 
                     documentId, user.getId());
+        }
+    }
+    
+    /**
+     * 문서 할당 시 알림 생성
+     */
+    private void createDocumentAssignmentNotification(User assignedUser, Document document, DocumentRole.TaskRole role) {
+        try {
+            String title = getNotificationTitle(role, document);
+            String message = getNotificationMessage(role, document);
+            String actionUrl = "/documents/" + document.getId();
+            
+            notificationService.createNotification(
+                assignedUser,
+                title,
+                message,
+                NotificationType.DOCUMENT_ASSIGNED,
+                document.getId(),
+                actionUrl
+            );
+            
+            log.info("문서 할당 알림 생성 완료 - 사용자: {}, 문서: {}, 역할: {}", 
+                    assignedUser.getName(), document.getTitle(), role);
+        } catch (Exception e) {
+            log.error("문서 할당 알림 생성 실패 - 사용자: {}, 문서: {}, 역할: {}", 
+                    assignedUser.getName(), document.getTitle(), role, e);
+        }
+    }
+    
+    /**
+     * 역할에 따른 알림 제목 생성
+     */
+    private String getNotificationTitle(DocumentRole.TaskRole role, Document document) {
+        switch (role) {
+            case EDITOR:
+                return "새로운 문서 편집 요청";
+            case REVIEWER:
+                return "새로운 문서 검토 요청";
+            case CREATOR:
+                return "문서가 생성되었습니다";
+            default:
+                return "새로운 문서 할당";
+        }
+    }
+    
+    /**
+     * 역할에 따른 알림 메시지 생성
+     */
+    private String getNotificationMessage(DocumentRole.TaskRole role, Document document) {
+        String documentTitle = document.getTitle() != null ? document.getTitle() : document.getTemplate().getName();
+        
+        switch (role) {
+            case EDITOR:
+                return "'" + documentTitle + "' 문서의 편집자로 지정되었습니다.";
+            case REVIEWER:
+                return "'" + documentTitle + "' 문서의 검토자로 지정되었습니다.";
+            case CREATOR:
+                return "'" + documentTitle + "' 문서를 성공적으로 생성했습니다.";
+            default:
+                return "'" + documentTitle + "' 문서에 새로운 역할이 할당되었습니다.";
         }
     }
 } 
