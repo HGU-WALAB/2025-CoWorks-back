@@ -110,6 +110,24 @@ public class DocumentController {
         }
     }
     
+    // 처리 해야 할 문서 리스트 조회 
+    @GetMapping("/todo")
+    public ResponseEntity<List<DocumentResponse>> getTodoDocuments(HttpServletRequest httpRequest) {
+        try {
+            User currentUser = getCurrentUser(httpRequest);
+            List<Document> documents = documentService.getTodoDocumentsByUser(currentUser);
+            List<DocumentResponse> responses = documents.stream()
+                    .map(document -> documentService.getDocumentResponse(document.getId()))
+                    .filter(response -> response != null)
+                    .collect(Collectors.toList());
+            
+            return ResponseEntity.ok(responses);
+        } catch (Exception e) {
+            log.error("Error getting todo documents", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
     @GetMapping("/{id}")
     public ResponseEntity<DocumentResponse> getDocument(@PathVariable Long id) {
         try {

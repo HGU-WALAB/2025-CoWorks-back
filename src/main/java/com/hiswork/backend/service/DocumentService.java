@@ -319,6 +319,11 @@ public class DocumentService {
     }
     
     @Transactional(readOnly = true)
+    public List<Document> getTodoDocumentsByUser(User user) {
+        return documentRepository.findTodoDocumentsByUserId(user.getId());
+    }
+    
+    @Transactional(readOnly = true)
     public Optional<Document> getDocumentById(Long id) {
         return documentRepository.findByIdWithStatusLogs(id);
     }
