@@ -64,4 +64,16 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
            "dr.assignedUserId = :userId " +
            "ORDER BY d.createdAt DESC, sl.timestamp ASC")
     List<Document> findDocumentsByUserIdWithStatusLogs(@Param("userId") String userId);
+    
+    /**
+     * 사용자의 할당된 문서들을 우선순위별로 조회 (Todo List)
+     * 1. deadline이 가까운 순 (null일 경우에 마지막에 배치)
+     * 2. 최근 생성된 순
+     */
+    
+    @Query("SELECT d FROM Document d " +
+           "JOIN d.documentRoles dr WHERE " +
+           "dr.assignedUserId = :userId " +
+           "ORDER BY d.deadline ASC NULLS LAST, d.createdAt DESC")
+    List<Document> findTodoDocumentsByUserId(@Param("userId") String userId);
 } 
