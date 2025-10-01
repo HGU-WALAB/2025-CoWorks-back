@@ -34,6 +34,13 @@ public class Template {
     private String pdfFilePath;
     
     private String pdfImagePath;
+
+    @Column(length = 3000)
+    private String pdfImagePaths;
+
+    private String pdfPagesData; // PDF 페이지별 데이터 (JSON 형태)
+    private Boolean isMultiPage;
+    private Integer totalPages;
     
     @Column(columnDefinition = "TEXT")
     private String coordinateFields; // JSON 형태로 저장된 좌표 필드 정보

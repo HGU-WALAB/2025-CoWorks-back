@@ -20,6 +20,7 @@ public class TemplateResponse {
     private Boolean isPublic;
     private String pdfFilePath;
     private String pdfImagePath;
+    private String pdfImagePaths;
     private String coordinateFields;  // 추가
     private LocalDateTime deadline;  // 만료일 추가
     private UUID defaultFolderId;  // 기본 폴더 ID
@@ -28,6 +29,9 @@ public class TemplateResponse {
     private String createdByName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private String pdfPagesData; // PDF 페이지별 데이터 (JSON 형태)
+    private Boolean isMultiPage;
+    private Integer totalPages;
     
     public static TemplateResponse from(Template template) {
         return TemplateResponse.builder()
@@ -37,6 +41,7 @@ public class TemplateResponse {
                 .isPublic(template.getIsPublic())
                 .pdfFilePath(template.getPdfFilePath())
                 .pdfImagePath(template.getPdfImagePath())
+                .pdfImagePaths(template.getPdfImagePaths())
                 .coordinateFields(template.getCoordinateFields())  // 추가
                 .deadline(template.getDeadline())  // 만료일 추가
                 .defaultFolderId(template.getDefaultFolder() != null ? template.getDefaultFolder().getId() : null)
@@ -45,6 +50,9 @@ public class TemplateResponse {
                 .createdByName(template.getCreatedBy().getName())
                 .createdAt(template.getCreatedAt())
                 .updatedAt(template.getUpdatedAt())
+                .pdfPagesData(template.getPdfPagesData())
+                .isMultiPage(template.getIsMultiPage())
+                .totalPages(template.getTotalPages())
                 .build();
     }
 } 
