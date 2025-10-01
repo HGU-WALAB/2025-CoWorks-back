@@ -28,6 +28,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.List;
 import java.util.UUID;
 import com.itextpdf.io.image.ImageData;
 import com.itextpdf.io.image.ImageDataFactory;
@@ -73,13 +74,13 @@ public class PdfService {
         Files.copy(file.getInputStream(), pdfPath, StandardCopyOption.REPLACE_EXISTING);
         
         // PDF를 이미지로 변환
-        String imagePath = convertPdfToImage(pdfPath.toString());
+        List<String> imagePath = convertPdfToImages(pdfPath.toString());
         
         log.info("PDF 템플릿 업로드 완료: PDF={}, Image={}", pdfPath, imagePath);
         
         return PdfUploadResult.builder()
                 .pdfFilePath(pdfPath.toString())
-                .pdfImagePath(imagePath)
+                .pdfImagePaths(imagePath)
                 .originalFilename(originalFilename)
                 .build();
     }
@@ -103,6 +104,31 @@ public class PdfService {
             
             return imagePath;
         }
+    }
+
+    private List<String> convertPdfToImages(String pdfFilePath) throws IOException {
+        List<String> imagePaths = new java.util.ArrayList<>();
+
+        try (PDDocument document = PDDocument.load(new File(pdfFilePath))) {
+            PDFRenderer pdfRenderer = new PDFRenderer(document);
+            int totalPages = document.getNumberOfPages();
+
+            // 모든 페이지를 이미지로 변환
+            for (int page = 0; page < totalPages; page++) {
+                BufferedImage bufferedImage = pdfRenderer.renderImageWithDPI(page, 150); // 150 DPI로 렌더링
+
+                // 이미지 파일 경로 생성
+                String pdfBaseName = getBaseName(pdfFilePath);
+                String imagePath = pdfTemplatesDir + File.separator + pdfBaseName + "_page_" + (page + 1) + ".png";
+
+                // 이미지 저장
+                ImageIO.write(bufferedImage, "PNG", new File(imagePath));
+
+                imagePaths.add(imagePath);
+            }
+        }
+
+        return imagePaths;
     }
     
     /**
@@ -360,15 +386,40 @@ public class PdfService {
     public byte[] convertPdfToImage(java.io.InputStream pdfInputStream, int dpi) throws IOException {
         try (PDDocument document = PDDocument.load(pdfInputStream)) {
             PDFRenderer pdfRenderer = new PDFRenderer(document);
-            
+
             // 첫 번째 페이지만 렌더링 (150 DPI)
             BufferedImage image = pdfRenderer.renderImageWithDPI(0, dpi);
-            
+
             // BufferedImage를 PNG 바이트 배열로 변환
             java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
             ImageIO.write(image, "PNG", baos);
-            
+
             return baos.toByteArray();
+        }
+    }
+
+    /**
+     * PDF의 모든 페이지를 이미지로 변환 (150 DPI)
+     */
+    public java.util.List<byte[]> convertPdfToImages(java.io.InputStream pdfInputStream, int dpi) throws IOException {
+        java.util.List<byte[]> imageList = new java.util.ArrayList<>();
+
+        try (PDDocument document = PDDocument.load(pdfInputStream)) {
+            PDFRenderer pdfRenderer = new PDFRenderer(document);
+            int totalPages = document.getNumberOfPages();
+
+            // 모든 페이지를 이미지로 변환
+            for (int page = 0; page < totalPages; page++) {
+                BufferedImage image = pdfRenderer.renderImageWithDPI(page, dpi);
+
+                // BufferedImage를 PNG 바이트 배열로 변환
+                java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+                ImageIO.write(image, "PNG", baos);
+                imageList.add(baos.toByteArray());
+            }
+            log.info( "PDF의 모든 페이지를 이미지로 변환 완료 - 총 페이지: {}, DPI: {}", totalPages, dpi);
+
+            return imageList;
         }
     }
     
@@ -379,7 +430,7 @@ public class PdfService {
     @lombok.Builder
     public static class PdfUploadResult {
         private String pdfFilePath;
-        private String pdfImagePath;
+        private List<String> pdfImagePaths;
         private String originalFilename;
     }
 } 

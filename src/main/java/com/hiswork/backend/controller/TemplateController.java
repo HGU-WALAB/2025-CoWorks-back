@@ -78,6 +78,10 @@ public class TemplateController {
             @RequestParam(value = "coordinateFields", required = false) String coordinateFields,
             @RequestParam(value = "deadline", required = false) String deadline,
             @RequestParam(value = "defaultFolderId", required = false) String defaultFolderId,
+            @RequestParam(value = "isMultiPage", defaultValue = "false") Boolean isMultiPage,
+            @RequestParam(value = "totalPages", defaultValue = "1") Integer totalPages,
+            @RequestParam(value = "pdfPagesData", required = false) String pdfPagesData,
+
             HttpServletRequest httpRequest) {
         
         try {
@@ -116,10 +120,14 @@ public class TemplateController {
                     .description(description)
                     .isPublic(isPublic)
                     .pdfFilePath(uploadResult.getPdfFilePath())
-                    .pdfImagePath(uploadResult.getPdfImagePath())
+                    .pdfImagePath(uploadResult.getPdfImagePaths().get(0)) // 첫 페이지 이미지 경로
+                    .pdfImagePaths(uploadResult.getPdfImagePaths().toString())
                     .coordinateFields(coordinateFields)  // coordinateFields 추가
                     .deadline(deadlineDateTime)  // 만료일 추가
                     .defaultFolder(defaultFolder)  // 기본 폴더 추가
+                    .isMultiPage(isMultiPage)
+                    .totalPages(totalPages)
+                    .pdfPagesData(pdfPagesData)
                     .createdBy(user)
                     .build();
             
@@ -129,7 +137,8 @@ public class TemplateController {
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(Map.of(
                             "template", TemplateResponse.from(savedTemplate),
-                            "pdfImagePath", uploadResult.getPdfImagePath(),
+                            "pdfImagePath", uploadResult.getPdfImagePaths().get(0),
+                            "pdfImagePaths", uploadResult.getPdfImagePaths(),
                             "originalFilename", uploadResult.getOriginalFilename()
                     ));
         } catch (Exception e) {

@@ -98,10 +98,15 @@ public class DocumentResponse {
         private Boolean isPublic;
         private String pdfFilePath;
         private String pdfImagePath;
+        private String pdfImagePaths;
         private String coordinateFields; // JSON 형태로 저장된 좌표 필드 정보
         private LocalDateTime deadline; // 만료일 추가
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
+        private Boolean isMultiPage;
+        private Integer totalPages;
+        private String pdfPagesData; // PDF 페이지별 데이터 (JSON 형태)
+
         
         public static TemplateInfo from(com.hiswork.backend.domain.Template template) {
             return TemplateInfo.builder()
@@ -111,10 +116,14 @@ public class DocumentResponse {
                     .isPublic(template.getIsPublic())
                     .pdfFilePath(template.getPdfFilePath())
                     .pdfImagePath(template.getPdfImagePath())
+                    .pdfImagePaths(template.getPdfImagePaths())
                     .coordinateFields(template.getCoordinateFields())
                     .deadline(template.getDeadline()) // 만료일 추가
                     .createdAt(template.getCreatedAt())
                     .updatedAt(template.getUpdatedAt())
+                    .isMultiPage(template.getIsMultiPage())
+                    .totalPages(template.getTotalPages())
+                    .pdfPagesData(template.getPdfPagesData())
                     .build();
         }
     }
