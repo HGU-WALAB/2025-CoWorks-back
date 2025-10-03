@@ -74,6 +74,10 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
     @Query("SELECT d FROM Document d " +
            "JOIN d.documentRoles dr WHERE " +
            "dr.assignedUserId = :userId " +
+           "AND d.status <> com.hiswork.backend.domain.Document$DocumentStatus.COMPLETED " +
+           "AND (d.status <> com.hiswork.backend.domain.Document$DocumentStatus.REVIEWING " +
+           "OR (d.status = com.hiswork.backend.domain.Document$DocumentStatus.REVIEWING " +
+           "AND dr.taskRole = com.hiswork.backend.domain.DocumentRole$TaskRole.REVIEWER)) " +
            "ORDER BY d.deadline ASC NULLS LAST, d.createdAt DESC")
     List<Document> findTodoDocumentsByUserId(@Param("userId") String userId);
 } 
