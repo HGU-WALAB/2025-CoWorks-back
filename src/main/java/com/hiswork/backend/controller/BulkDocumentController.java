@@ -16,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -148,7 +149,27 @@ public class BulkDocumentController {
                     .body(Map.of("error", e.getMessage()));
         }
     }
-    
+
+
+    // 특정 템플릿으로 생성한 스테이징 목록 조회
+    @GetMapping("/getStaging")
+    public ResponseEntity<?> getStagingsByTemplate(
+            @RequestParam Long templateId,
+            HttpServletRequest httpRequest
+    ) {
+        User currentUser = getCurrentUser(httpRequest);
+        List<BulkStaging> stagings = bulkStagingRepository
+                .findByTemplateIdAndCreatorOrderByCreatedAtDesc(templateId, currentUser.getId());
+
+        // stagingId만 추출하여 반환
+        List<String> stagingIds = stagings.stream()
+                .map(BulkStaging::getStagingId)
+                .toList();
+
+        return ResponseEntity.ok(stagingIds);
+    }
+
+
     // staging에 있는 아이템 조회
     @GetMapping("/staging/{stagingId}/items")
     @RequireFolderAccess

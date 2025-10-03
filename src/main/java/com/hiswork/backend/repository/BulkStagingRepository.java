@@ -1,6 +1,7 @@
 package com.hiswork.backend.repository;
 
 import com.hiswork.backend.domain.BulkStaging;
+import com.hiswork.backend.domain.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -30,4 +31,17 @@ public interface BulkStagingRepository extends JpaRepository<BulkStaging, String
      */
     @Query("SELECT bs FROM BulkStaging bs WHERE bs.status IN ('COMMITTED', 'CANCELED') AND bs.updatedAt < :before")
     List<BulkStaging> findCompletedBefore(@Param("before") LocalDateTime before);
+
+    /**
+     * 특정 템플릿으로 생성된 스테이징들을 생성자 기준 최신순으로 조회
+     */
+    @Query("SELECT bs FROM BulkStaging bs " +
+           "JOIN FETCH bs.template t " +
+           "JOIN FETCH bs.creator c " +
+           "WHERE t.id = :templateId AND c.id = :creatorId " +
+           "ORDER BY bs.createdAt DESC")
+    List<BulkStaging> findByTemplateIdAndCreatorOrderByCreatedAtDesc(
+            @Param("templateId") Long templateId, 
+            @Param("creatorId") String creatorId);
+
 }
