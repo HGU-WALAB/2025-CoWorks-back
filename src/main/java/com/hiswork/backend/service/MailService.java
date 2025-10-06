@@ -53,7 +53,7 @@ public class MailService {
             MimeMessage mime = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(mime, true, StandardCharsets.UTF_8.name());
             helper.setTo(command.getEditorEmail());
-            helper.setSubject("[Hiswork] 편집자 할당 알림");
+            helper.setSubject("[CoWorks] 편집자 할당 알림");
             helper.setText(html, true);
 
 
@@ -85,7 +85,7 @@ public class MailService {
             MimeMessage mime = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(mime, true, StandardCharsets.UTF_8.name());
             helper.setTo(command.getReviewerEmail());
-            helper.setSubject("[Hiswork] 검토자 할당 알림");
+            helper.setSubject("[CoWorks] 검토자 할당 알림");
             helper.setText(html, true);
 
 //            helper.addInline("logoImage", new ClassPathResource("static/images/hiswork-logo.png"));
@@ -120,7 +120,7 @@ public class MailService {
             MimeMessage mime = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(mime, true, StandardCharsets.UTF_8.name());
             helper.setTo(sender.getEmail());
-            helper.setSubject("[Hiswork] (TEST) 메일 전송 실패 보고서");
+            helper.setSubject("[CoWorks] (TEST) 메일 전송 실패 보고서");
             helper.setText(html, true);
 
             mailSender.send(mime);
@@ -139,7 +139,7 @@ public class MailService {
      * notificationType : 메일 중심에 들어 갈 내용2
      *                         (예: TA 문서일지 작성, 과제 제출 등) <br/>
      *                         -> 추후에 Enum으로 관리하는게 좋을듯: Enum으로 관리하면, Enum에 따라 템플릿도 다르게 처리 가능 <br/>
-     * subject : 메일 제목 (예: [Hiswork] 알림이 도착했습니다. -> notificationType에 따라 다르게 처리하면 좋을거 같다고 생각.)
+     * subject : 메일 제목 (예: [CoWorks] 알림이 도착했습니다. -> notificationType에 따라 다르게 처리하면 좋을거 같다고 생각.)
      * @param users
      * @param sender
      */
@@ -167,7 +167,7 @@ public class MailService {
                 MimeMessage mime = mailSender.createMimeMessage();
                 MimeMessageHelper helper = new MimeMessageHelper(mime, true, StandardCharsets.UTF_8.name());
                 helper.setTo(u.getEmail());
-                helper.setSubject("[Hiswork] 알림이 도착했습니다.");
+                helper.setSubject("[CoWorks] 알림이 도착했습니다.");
                 helper.setText(html, true);
 
                 mailSender.send(mime);
@@ -199,7 +199,7 @@ public class MailService {
             MimeMessageHelper helper = new MimeMessageHelper(mime, true, StandardCharsets.UTF_8.name());
 
             helper.setTo(sender.getEmail());
-            helper.setSubject("[Hiswork] 메일 전송 실패 보고서");
+            helper.setSubject("[CoWorks] 메일 전송 실패 보고서");
             helper.setText(html, true);
 
             mailSender.send(mime);
