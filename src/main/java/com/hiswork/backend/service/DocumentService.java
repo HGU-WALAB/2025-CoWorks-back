@@ -507,10 +507,12 @@ public class DocumentService {
         // 상태를 REJECTED로 변경
         changeDocumentStatus(document, Document.DocumentStatus.REJECTED, user, reason != null ? reason : "문서 반려");
         document = documentRepository.save(document);
-        
 
-        documentRoleRepository.findByDocumentAndRole(documentId, DocumentRole.TaskRole.REVIEWER)
-                .ifPresent(existingRole -> documentRoleRepository.delete(existingRole));
+        // 검토자 역할은 유지 (반려 후에도 검토자가 자신이 반려한 문서를 확인할 수 있도록)
+//        documentRoleRepository.findByDocumentAndRole(documentId, DocumentRole.TaskRole.REVIEWER)
+//                .ifPresent(existingRole -> documentRoleRepository.delete(existingRole));
+
+        log.info("문서 반려 완료 - 문서 ID: {}, 검토자: {} (검토자 역할 유지)", documentId, user.getEmail());
         
         return document;
     }
