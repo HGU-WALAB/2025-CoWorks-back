@@ -13,7 +13,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -33,6 +32,7 @@ public class BulkDocumentService {
     private final DocumentRepository documentRepository;
     private final DocumentRoleRepository documentRoleRepository;
     private final ObjectMapper objectMapper;
+    private final MailService mailService;
 
     // 엑셀 파일 업로드 및 데이터 임시저장
     public BulkPreviewResponse createPreview(MultipartFile file, Long templateId, User creator) {
@@ -208,7 +208,7 @@ public class BulkDocumentService {
         // 4. 스테이징 상태 업데이트
         staging.setStatus(BulkStaging.StagingStatus.COMMITTED);
         bulkStagingRepository.save(staging);
-        
+
         log.info("대량 문서 생성 완료 - 생성: {}, 건너뜀: {}, 실패: {}", created, skipped, failed);
         
         return BulkCommitResponse.builder()
@@ -268,7 +268,7 @@ public class BulkDocumentService {
         return BulkCancelResponse.canceled();
     }
     
-     // 학생 개별 정보 관련
+    // 학생 개별 정보 처리
     private BulkCommitResponse.CommitItem processItem(BulkStagingItem item, Template template, User creator,
                                                      BulkCommitRequest.OnDuplicateAction onDuplicate) {
         
@@ -310,6 +310,30 @@ public class BulkDocumentService {
         
         DocumentRole documentRole = roleBuilder.build();
         documentRoleRepository.save(documentRole);
+        
+        // 모든 사용자에게 편집자 할당 메일 전송 (등록/미등록 모두)
+        try {
+            String editorEmail = item.getEmail();
+            String editorName = existingUser.isPresent() ? existingUser.get().getName() : item.getName();
+            
+            mailService.sendAssignEditorNotification(MailRequest.EditorAssignmentEmailCommand.builder()
+                    .documentTitle(document.getTitle())
+                    .creatorName(creator.getName())
+                    .editorEmail(editorEmail)
+                    .editorName(editorName)
+                    .dueDate(document.getDeadline() != null ? document.getDeadline().atZone(java.time.ZoneId.systemDefault()) : null)
+                    .projectName("CoWorks")
+                    .build());
+            
+            if (existingUser.isPresent()) {
+                log.info("편집자 할당 메일 전송 완료 (등록 사용자) - 문서: {}, 편집자: {}", document.getTitle(), editorEmail);
+            } else {
+                log.info("편집자 할당 메일 전송 완료 (미등록 사용자) - 문서: {}, 편집자: {}", document.getTitle(), editorEmail);
+            }
+        } catch (Exception e) {
+            log.error("편집자 할당 메일 전송 실패 - 문서: {}, 편집자: {}", document.getTitle(), item.getEmail(), e);
+            // 메일 전송 실패는 문서 생성에 영향을 주지 않도록 로그만 남김
+        }
         
         // 아이템 상태 업데이트
         item.setProcessingStatus(BulkStagingItem.ProcessingStatus.CREATED);
@@ -360,11 +384,7 @@ public class BulkDocumentService {
     private String generateDocumentTitle(ExcelParsingService.StudentRecord record) {
         return record.getName() + "_" + record.getCourse() + "_근무일지" ;
     }
-    
-    private String generateUniqueTitle(String baseTitle) {
-        return baseTitle;
-    }
-    
+
     private Optional<User> findUserByEmailOrId(String email, String studentId) {
         // 먼저 이메일로 검색
         Optional<User> userByEmail = userRepository.findByEmail(email);
