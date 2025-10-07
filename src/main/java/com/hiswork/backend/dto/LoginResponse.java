@@ -1,6 +1,5 @@
 package com.hiswork.backend.dto;
 
-import com.hiswork.backend.domain.User;
 import lombok.Builder;
 import lombok.Getter;
 
