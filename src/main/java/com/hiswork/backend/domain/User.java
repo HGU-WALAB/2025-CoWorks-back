@@ -69,6 +69,9 @@ public class User {
 
 
     public static User from(AuthDto dto) {
+        // grade 값에 따라 Position 결정
+        Position position = determinePositionByGrade(dto.getGrade());
+        
         return User.builder()
                 .id(dto.getUniqueId())
                 .name(dto.getName())
@@ -79,8 +82,23 @@ public class User {
                 .grade(dto.getGrade())
                 .semester(dto.getSemester())
                 .role(Role.USER) // 기본 상태를 USER로 설정
-                .position(Position.학생) // 기본값을 학생으로 설정
+                .position(position)
                 .build();
+    }
+    
+    
+    // grade 값에 따라 Position을 결정
+    private static Position determinePositionByGrade(Integer grade) {
+        if (grade == null) {
+            return Position.기타; // grade가 null이면 기본값 기타
+        }
+        if (grade == 0) { // 0이면 -> 교직원
+            return Position.교직원;
+        } else if (grade == -1) { // -1이면 -> 교수
+            return Position.교수;
+        } else { // 그 외 -> 학생
+            return Position.학생;
+        }
     }
 
     // 폴더 접근 권한 확인 헬퍼 메서드

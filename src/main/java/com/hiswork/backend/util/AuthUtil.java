@@ -54,28 +54,21 @@ public class AuthUtil {
     }
     
     private String extractTokenFromRequest(HttpServletRequest request) {
-        // 1. Request attribute에서 토큰 추출 시도 (SSE용)
-        String attributeAuth = (String) request.getAttribute("Authorization");
-        if (attributeAuth != null && attributeAuth.startsWith("Bearer ")) {
-            log.debug("Request attribute에서 토큰 추출 성공");
-            return attributeAuth.substring(7);
-        }
-        
-        // 2. 쿠키에서 토큰 추출 시도
-        String token = extractTokenFromCookie(request);
-        if (token != null) {
-            log.debug("쿠키에서 토큰 추출 성공");
-            return token;
-        }
-        
-        // 3. Authorization 헤더에서 토큰 추출 시도 (Bearer 방식)
+        // 1. Authorization 헤더에서 토큰 추출 시도 (localStorage 방식)
         String bearerToken = request.getHeader("Authorization");
         if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
             log.debug("Authorization 헤더에서 토큰 추출 성공");
             return bearerToken.substring(7);
         }
         
-        // 4. 쿼리 파라미터에서 토큰 추출 시도 (SSE용 추가)
+        // 2. Request attribute에서 토큰 추출 시도 (SSE용)
+        String attributeAuth = (String) request.getAttribute("Authorization");
+        if (attributeAuth != null && attributeAuth.startsWith("Bearer ")) {
+            log.debug("Request attribute에서 토큰 추출 성공");
+            return attributeAuth.substring(7);
+        }
+        
+        // 3. 쿼리 파라미터에서 토큰 추출 시도 (SSE용 추가)
         String queryToken = request.getParameter("token");
         if (queryToken != null && !queryToken.isEmpty()) {
             log.debug("쿼리 파라미터에서 토큰 추출 성공");
@@ -83,19 +76,6 @@ public class AuthUtil {
         }
         
         log.debug("토큰을 찾을 수 없음");
-        return null;
-    }
-    
-    private String extractTokenFromCookie(HttpServletRequest request) {
-        if (request.getCookies() == null) {
-            return null;
-        }
-        
-        for (Cookie cookie : request.getCookies()) {
-            if ("accessToken_hiswork".equals(cookie.getName())) {
-                return cookie.getValue();
-            }
-        }
         return null;
     }
 } 

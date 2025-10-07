@@ -167,17 +167,4 @@ public class AuthService {
                 .department(loggedInUser.getDepartment())
                 .build();
     }
-
-    // AccessToken 생성
-    public String createAccessToken(String uniqueId, String name, String department) {
-        Key key = JwtUtil.getSigningKey(SECRET_KEY);
-        return JwtUtil.createToken(uniqueId, name, department, key);
-    }
-
-    // RefreshToken 생성
-    public String createRefreshToken(String uniqueId, String name, String department) {
-        Key key = JwtUtil.getSigningKey(SECRET_KEY);
-        return JwtUtil.createRefreshToken(uniqueId, name, key);
-    }
-
 } 
