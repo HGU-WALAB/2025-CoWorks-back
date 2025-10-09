@@ -187,3 +187,5 @@ uploads/
 .idea/compiler.xml
 src/main/resources/*.properties
 
+bin
+.idea
