@@ -174,7 +174,7 @@ public class BulkDocumentService {
         // 3. 각 아이템 처리
         for (BulkStagingItem item : processableItems) {
             try {
-                BulkCommitResponse.CommitItem commitItem = processItem(item, staging.getTemplate(), creator, request.getOnDuplicate());
+                BulkCommitResponse.CommitItem commitItem = processItem(item, staging.getTemplate(), creator, request.getOnDuplicate(), request.getDeadline());
                 commitItems.add(commitItem);
                 
                 switch (commitItem.getStatus()) {
@@ -270,19 +270,22 @@ public class BulkDocumentService {
     
     // 학생 개별 정보 처리
     private BulkCommitResponse.CommitItem processItem(BulkStagingItem item, Template template, User creator,
-                                                     BulkCommitRequest.OnDuplicateAction onDuplicate) {
+                                                     BulkCommitRequest.OnDuplicateAction onDuplicate, java.time.LocalDateTime deadline) {
         
         String documentTitle = item.getDocumentTitle();
         
         // 문서 생성
         ObjectNode initialData = initializeDocumentData(template);
+        
+        // deadline이 제공되면 사용하고, 없으면 템플릿의 deadline 사용
+        java.time.LocalDateTime finalDeadline = deadline != null ? deadline : template.getDeadline();
 
         Document document = Document.builder()
                 .title(documentTitle)
                 .template(template)
                 .status(Document.DocumentStatus.EDITING)
                 .data(initialData)
-                .deadline(template.getDeadline()) // 템플릿의 만료일 상속
+                .deadline(finalDeadline) // 요청된 마감일 또는 템플릿의 만료일
                 .folder(template.getDefaultFolder())
                 .build();
         
