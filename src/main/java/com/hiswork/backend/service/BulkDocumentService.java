@@ -31,6 +31,7 @@ public class BulkDocumentService {
     private final UserRepository userRepository;
     private final DocumentRepository documentRepository;
     private final DocumentRoleRepository documentRoleRepository;
+    private final DocumentStatusLogRepository documentStatusLogRepository;
     private final ObjectMapper objectMapper;
     private final MailService mailService;
 
@@ -287,6 +288,17 @@ public class BulkDocumentService {
                 .build();
         
         document = documentRepository.save(document);
+        
+        // 초기 상태 로그 생성 (EDITING 상태로 시작)
+        DocumentStatusLog initialStatusLog = DocumentStatusLog.builder()
+                .document(document)
+                .status(Document.DocumentStatus.EDITING)
+                .changedByEmail(creator.getEmail())
+                .changedByName(creator.getName())
+                .comment("대량 업로드를 통한 문서 생성")
+                .build();
+        documentStatusLogRepository.save(initialStatusLog);
+        log.info("문서 초기 상태 로그 생성 - 문서 ID: {}, 상태: EDITING", document.getId());
         
         // 사용자 검색 (이메일 또는 학번으로)
         Optional<User> existingUser = findUserByEmailOrId(item.getEmail(), item.getStudentId());
