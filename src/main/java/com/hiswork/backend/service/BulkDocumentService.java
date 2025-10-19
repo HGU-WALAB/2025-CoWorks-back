@@ -31,6 +31,7 @@ public class BulkDocumentService {
     private final UserRepository userRepository;
     private final DocumentRepository documentRepository;
     private final DocumentRoleRepository documentRoleRepository;
+    private final DocumentStatusLogRepository documentStatusLogRepository;
     private final ObjectMapper objectMapper;
     private final MailService mailService;
 
@@ -314,6 +315,14 @@ public class BulkDocumentService {
         DocumentRole documentRole = roleBuilder.build();
         documentRoleRepository.save(documentRole);
         
+        // 문서 상태 로그 기록 (편집자 할당으로 EDITING 상태)
+        logBulkDocumentStatusChange(document, Document.DocumentStatus.EDITING, 
+                existingUser.orElse(null), item, 
+                "편집자 할당 - 대량 문서 생성");
+        
+        log.info("대량 문서 생성 - 문서 ID: {}, 제목: {}, 편집자: {} ({})", 
+                document.getId(), documentTitle, item.getName(), item.getEmail());
+        
         // 모든 사용자에게 편집자 할당 메일 전송 (등록/미등록 모두)
         try {
             String editorEmail = item.getEmail();
@@ -404,6 +413,24 @@ public class BulkDocumentService {
     }
 
 
+    /**
+     * 대량 문서 생성 시 상태 변경 로그 기록
+     */
+    private void logBulkDocumentStatusChange(Document document, Document.DocumentStatus status, 
+                                            User assignedUser, BulkStagingItem item, String comment) {
+        DocumentStatusLog statusLog = DocumentStatusLog.builder()
+                .document(document)
+                .status(status)
+                .changedByEmail(assignedUser != null ? assignedUser.getEmail() : item.getEmail())
+                .changedByName(assignedUser != null ? assignedUser.getName() : item.getName())
+                .comment(comment)
+                .build();
+        
+        documentStatusLogRepository.save(statusLog);
+        log.info("대량 문서 상태 로그 생성 - 문서ID: {}, 상태: {}, 편집자: {} ({})", 
+                document.getId(), status, item.getName(), item.getEmail());
+    }
+    
     // BulkStagingItem을 응답용 StagingItem으로 변환
     private BulkStagingItemsResponse.StagingItem convertToStagingItem(BulkStagingItem item) {
         // 사용자 등록 상태 확인
