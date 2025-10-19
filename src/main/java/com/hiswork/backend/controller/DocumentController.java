@@ -56,11 +56,12 @@ public class DocumentController {
             // 스테이징 ID가 있으면 대량 문서 생성 (엑셀 업로드 후)
             if (request.getStagingId() != null && !request.getStagingId().trim().isEmpty()) {
                 log.info("스테이징 ID 발견, 대량 문서 생성 실행: {}", request.getStagingId());
-                log.info("요청자 정보 - ID: {}, 이메일: {}", creator.getId(), creator.getEmail());
-                
+                log.info("요청자 정보 - ID: {}, 이메일: {}, deadline: {}", creator.getId(), creator.getEmail(), request.getDeadline());
+
                 BulkCommitRequest bulkRequest = new BulkCommitRequest();
                 bulkRequest.setStagingId(request.getStagingId());
                 bulkRequest.setOnDuplicate(BulkCommitRequest.OnDuplicateAction.SKIP); // 기본값
+                bulkRequest.setDeadline(request.getDeadline()); // deadline 설정
                 
                 BulkCommitResponse bulkResponse = bulkDocumentService.commitBulkCreation(bulkRequest, creator);
                 
@@ -78,7 +79,8 @@ public class DocumentController {
                         request.getTemplateId(), 
                         creator, 
                         request.getEditorEmail(),
-                        request.getTitle()
+                        request.getTitle(),
+                        request.getDeadline()
                 );
                 
                 log.info("Document created successfully with ID: {}", document.getId());

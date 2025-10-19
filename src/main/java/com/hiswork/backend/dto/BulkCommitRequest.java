@@ -2,6 +2,7 @@ package com.hiswork.backend.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
+import java.time.LocalDateTime;
 
 @Data
 public class BulkCommitRequest {
@@ -10,6 +11,8 @@ public class BulkCommitRequest {
     private String stagingId;
     
     private OnDuplicateAction onDuplicate = OnDuplicateAction.SKIP;
+    
+    private LocalDateTime deadline; // 문서 마감일
     
     public enum OnDuplicateAction {
         SKIP,         // 중복 건너뛰기

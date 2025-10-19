@@ -50,19 +50,22 @@ public class DocumentService {
     private final ObjectMapper objectMapper;
     private final PasswordEncoder passwordEncoder;
     private final NotificationService notificationService;
-  
-    public Document createDocument(Long templateId, User creator, String editorEmail, String title) {
+
+    public Document createDocument(Long templateId, User creator, String editorEmail, String title, LocalDateTime deadline) {
         Template template = templateRepository.findById(templateId)
                 .orElseThrow(() -> new RuntimeException("Template not found"));
         
         ObjectNode initialData = initializeDocumentData(template);
+        
+        // deadline이 제공되면 사용하고, 없으면 템플릿의 deadline 사용
+        LocalDateTime finalDeadline = deadline != null ? deadline : template.getDeadline();
         
         Document document = Document.builder()
                 .template(template)
                 .title(title)
                 .data(initialData)
                 .status(Document.DocumentStatus.DRAFT)
-                .deadline(template.getDeadline())  // 템플릿의 만료일 상속
+                .deadline(finalDeadline)  // 요청된 마감일 또는 템플릿의 만료일
                 .folder(template.getDefaultFolder())  // 템플릿의 기본 폴더 적용
                 .build();
         
