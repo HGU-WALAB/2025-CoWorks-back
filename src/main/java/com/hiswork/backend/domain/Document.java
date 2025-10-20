@@ -49,6 +49,8 @@ public class Document {
     private LocalDateTime updatedAt;
     
     private LocalDateTime deadline;
+
+    private Boolean isRejected;
     
     // 소속 폴더 (선택적 - null일 수 있음)
     @ManyToOne(fetch = FetchType.LAZY)
@@ -67,6 +69,6 @@ public class Document {
     private List<DocumentStatusLog> statusLogs = new ArrayList<>();
     
     public enum DocumentStatus {
-        DRAFT, EDITING, READY_FOR_REVIEW, REVIEWING, COMPLETED, REJECTED
+        DRAFT, EDITING, READY_FOR_REVIEW, REVIEWING, COMPLETED
     }
 } 
