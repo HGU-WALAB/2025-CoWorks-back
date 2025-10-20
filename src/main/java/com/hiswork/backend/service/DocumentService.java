@@ -192,7 +192,7 @@ public class DocumentService {
         }
         
         // 현재 상태가 EDITING이어야 함
-        if (document.getStatus() != Document.DocumentStatus.EDITING && document.getStatus() != Document.DocumentStatus.REJECTED) {
+        if (document.getStatus() != Document.DocumentStatus.EDITING) {
             throw new RuntimeException("문서가 편집 상태가 아닙니다");
         }
         
@@ -396,6 +396,7 @@ public class DocumentService {
                 .createdAt(document.getCreatedAt())
                 .updatedAt(document.getUpdatedAt())
                 .deadline(document.getDeadline())
+                .isRejected(document.getIsRejected() != null ? document.getIsRejected() : false)
                 .tasks(taskInfos)
                 .statusLogs(statusLogResponses)
                 .template(templateInfo)
@@ -452,7 +453,7 @@ public class DocumentService {
         }
         
         // 현재 상태가 EDITING이어야 함
-        if (document.getStatus() != Document.DocumentStatus.EDITING && document.getStatus() != Document.DocumentStatus.REJECTED) {
+        if (document.getStatus() != Document.DocumentStatus.EDITING) {
             log.warn("문서 상태 오류 - 현재 상태: {}, 예상 상태: EDITING", document.getStatus());
             throw new RuntimeException("문서가 편집 상태가 아닙니다");
         }
@@ -514,8 +515,9 @@ public class DocumentService {
             throw new RuntimeException("문서가 검토 대기 상태가 아닙니다");
         }
         
-        // 상태를 REJECTED로 변경
-        changeDocumentStatus(document, Document.DocumentStatus.REJECTED, user, reason != null ? reason : "문서 반려");
+        // 상태를 Editing 변경
+        changeDocumentStatus(document, Document.DocumentStatus.EDITING, user, reason != null ? reason : "문서 반려");
+        document.setIsRejected(true);
         document = documentRepository.save(document);
 
         // 편집자의 lastViewedAt을 null로 초기화하여 NEW 상태로 만들기

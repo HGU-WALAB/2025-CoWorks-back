@@ -26,6 +26,7 @@ public class DocumentResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime deadline;
+    private Boolean isRejected;
     private List<TaskInfo> tasks;
     private List<DocumentStatusLogResponse> statusLogs;
     
@@ -53,6 +54,7 @@ public class DocumentResponse {
                 .createdAt(document.getCreatedAt())
                 .updatedAt(document.getUpdatedAt())
                 .deadline(document.getDeadline())
+                .isRejected(document.getIsRejected() != null ? document.getIsRejected() : false)
                 .tasks(taskInfos)
                 .statusLogs(statusLogResponses)
                 .template(templateInfo)
