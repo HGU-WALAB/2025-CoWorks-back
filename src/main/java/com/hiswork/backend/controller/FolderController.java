@@ -2,31 +2,40 @@ package com.hiswork.backend.controller;
 
 import com.hiswork.backend.annotation.RequireFolderAccess;
 import com.hiswork.backend.domain.User;
-import com.hiswork.backend.dto.*;
+import com.hiswork.backend.dto.DocumentMoveRequest;
+import com.hiswork.backend.dto.DocumentResponse;
+import com.hiswork.backend.dto.FolderCreateRequest;
+import com.hiswork.backend.dto.FolderResponse;
+import com.hiswork.backend.dto.FolderUpdateRequest;
 import com.hiswork.backend.service.FolderService;
 import com.hiswork.backend.util.AuthUtil;
 import jakarta.servlet.http.HttpServletRequest;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/folders")
+@RequestMapping("/folders")
 @RequiredArgsConstructor
 @Slf4j
 public class FolderController {
-    
+
     private final FolderService folderService;
     private final AuthUtil authUtil;
-    
+
     /**
-     * 폴더 접근 권한 확인
-     * GET /api/folders/access-check
+     * 폴더 접근 권한 확인 GET /api/folders/access-check
      */
     @GetMapping("/access-check")
     public ResponseEntity<Boolean> checkFolderAccess(HttpServletRequest request) {
@@ -39,10 +48,9 @@ public class FolderController {
             return ResponseEntity.ok(false);
         }
     }
-    
+
     /**
-     * 루트 폴더 목록 조회
-     * GET /api/folders
+     * 루트 폴더 목록 조회 GET /api/folders
      */
     @GetMapping
     @RequireFolderAccess
@@ -51,10 +59,9 @@ public class FolderController {
         List<FolderResponse> folders = folderService.getRootFolders(user);
         return ResponseEntity.ok(folders);
     }
-    
+
     /**
-     * 폴더 트리 구조 조회
-     * GET /api/folders/tree
+     * 폴더 트리 구조 조회 GET /api/folders/tree
      */
     @GetMapping("/tree")
     @RequireFolderAccess
@@ -63,10 +70,9 @@ public class FolderController {
         List<FolderResponse> tree = folderService.getFolderTree(user);
         return ResponseEntity.ok(tree);
     }
-    
+
     /**
-     * 특정 폴더 조회
-     * GET /api/folders/{id}
+     * 특정 폴더 조회 GET /api/folders/{id}
      */
     @GetMapping("/{id}")
     @RequireFolderAccess
@@ -85,10 +91,9 @@ public class FolderController {
             return ResponseEntity.notFound().build();
         }
     }
-    
+
     /**
-     * 새 폴더 생성
-     * POST /api/folders
+     * 새 폴더 생성 POST /api/folders
      */
     @PostMapping
     @RequireFolderAccess
@@ -109,10 +114,9 @@ public class FolderController {
                     .body(Map.of("message", e.getMessage()));
         }
     }
-    
+
     /**
-     * 폴더 수정
-     * PUT /api/folders/{id}
+     * 폴더 수정 PUT /api/folders/{id}
      */
     @PutMapping("/{id}")
     @RequireFolderAccess
@@ -138,10 +142,9 @@ public class FolderController {
                     .body(Map.of("message", e.getMessage()));
         }
     }
-    
+
     /**
-     * 폴더 삭제
-     * DELETE /api/folders/{id}
+     * 폴더 삭제 DELETE /api/folders/{id}
      */
     @DeleteMapping("/{id}")
     @RequireFolderAccess
@@ -163,10 +166,9 @@ public class FolderController {
             return ResponseEntity.badRequest().build();
         }
     }
-    
+
     /**
-     * 특정 폴더의 자식 폴더들 조회
-     * GET /api/folders/{id}/children
+     * 특정 폴더의 자식 폴더들 조회 GET /api/folders/{id}/children
      */
     @GetMapping("/{id}/children")
     @RequireFolderAccess
@@ -185,10 +187,9 @@ public class FolderController {
             return ResponseEntity.notFound().build();
         }
     }
-    
+
     /**
-     * 폴더 내 문서 목록 조회
-     * GET /api/folders/{id}/documents
+     * 폴더 내 문서 목록 조회 GET /api/folders/{id}/documents
      */
     @GetMapping("/{id}/documents")
     @RequireFolderAccess
@@ -207,10 +208,9 @@ public class FolderController {
             return ResponseEntity.notFound().build();
         }
     }
-    
+
     /**
-     * 미분류 문서 목록 조회
-     * GET /api/folders/unclassified/documents
+     * 미분류 문서 목록 조회 GET /api/folders/unclassified/documents
      */
     @GetMapping("/unclassified/documents")
     @RequireFolderAccess
@@ -224,10 +224,9 @@ public class FolderController {
             return ResponseEntity.status(403).build();
         }
     }
-    
+
     /**
-     * 문서를 폴더로 이동
-     * POST /api/folders/{folderId}/documents/{documentId}
+     * 문서를 폴더로 이동 POST /api/folders/{folderId}/documents/{documentId}
      */
     @PostMapping("/{folderId}/documents/{documentId}")
     @RequireFolderAccess
@@ -247,10 +246,9 @@ public class FolderController {
             return ResponseEntity.notFound().build();
         }
     }
-    
+
     /**
-     * 문서를 폴더에서 제거 (미분류로 이동)
-     * DELETE /api/folders/documents/{documentId}
+     * 문서를 폴더에서 제거 (미분류로 이동) DELETE /api/folders/documents/{documentId}
      */
     @DeleteMapping("/documents/{documentId}")
     @RequireFolderAccess
@@ -269,10 +267,9 @@ public class FolderController {
             return ResponseEntity.notFound().build();
         }
     }
-    
+
     /**
-     * 문서 이동 (통합 API)
-     * PUT /api/folders/documents/{documentId}/move
+     * 문서 이동 (통합 API) PUT /api/folders/documents/{documentId}/move
      */
     @PutMapping("/documents/{documentId}/move")
     @RequireFolderAccess

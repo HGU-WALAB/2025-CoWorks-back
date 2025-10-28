@@ -1,32 +1,37 @@
 package com.hiswork.backend.controller;
 
 import com.hiswork.backend.domain.Notification;
-import com.hiswork.backend.domain.NotificationType;
 import com.hiswork.backend.domain.User;
 import com.hiswork.backend.service.NotificationService;
 import com.hiswork.backend.util.AuthUtil;
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import java.util.List;
-import java.util.Map;
-
 @RestController
-@RequestMapping("/api/notifications")
+@RequestMapping("/notifications")
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 @Slf4j
 public class NotificationController {
-    
+
     private final NotificationService notificationService;
     private final AuthUtil authUtil;
-    
+
     /**
      * 사용자의 알림 목록 조회 (페이지네이션)
      */
@@ -35,7 +40,7 @@ public class NotificationController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             HttpServletRequest request) {
-        
+
         try {
             User currentUser = authUtil.getCurrentUser(request);
             Page<Notification> notifications = notificationService.getUserNotifications(currentUser, page, size);
@@ -45,7 +50,7 @@ public class NotificationController {
             return ResponseEntity.badRequest().build();
         }
     }
-    
+
     /**
      * 읽지 않은 알림 목록 조회
      */
@@ -60,7 +65,7 @@ public class NotificationController {
             return ResponseEntity.badRequest().build();
         }
     }
-    
+
     /**
      * 읽지 않은 알림 개수 조회
      */
@@ -75,7 +80,7 @@ public class NotificationController {
             return ResponseEntity.badRequest().build();
         }
     }
-    
+
     /**
      * 알림 읽음 처리
      */
@@ -83,7 +88,7 @@ public class NotificationController {
     public ResponseEntity<Map<String, String>> markAsRead(
             @PathVariable Long notificationId,
             HttpServletRequest request) {
-        
+
         try {
             User currentUser = authUtil.getCurrentUser(request);
             notificationService.markAsRead(notificationId, currentUser);
@@ -94,7 +99,7 @@ public class NotificationController {
                     .body(Map.of("error", e.getMessage()));
         }
     }
-    
+
     /**
      * 모든 알림 읽음 처리
      */
@@ -110,7 +115,7 @@ public class NotificationController {
                     .body(Map.of("error", e.getMessage()));
         }
     }
-    
+
     /**
      * 알림 삭제
      */
@@ -118,7 +123,7 @@ public class NotificationController {
     public ResponseEntity<Map<String, String>> deleteNotification(
             @PathVariable Long notificationId,
             HttpServletRequest request) {
-        
+
         try {
             User currentUser = authUtil.getCurrentUser(request);
             notificationService.deleteNotification(notificationId, currentUser);
@@ -129,7 +134,7 @@ public class NotificationController {
                     .body(Map.of("error", e.getMessage()));
         }
     }
-    
+
     /**
      * 모든 알림 삭제
      */
@@ -145,7 +150,7 @@ public class NotificationController {
                     .body(Map.of("error", e.getMessage()));
         }
     }
-    
+
     /**
      * SSE 연결 (실시간 알림)
      */
@@ -155,13 +160,13 @@ public class NotificationController {
             HttpServletRequest request) {
         try {
             User currentUser;
-            
+
             // 토큰이 쿼리 파라미터로 전달된 경우 처리
             if (token != null && !token.isEmpty()) {
                 // Authorization 헤더에 토큰을 설정하여 AuthUtil이 처리할 수 있도록 함
                 request.setAttribute("Authorization", "Bearer " + token);
             }
-            
+
             currentUser = authUtil.getCurrentUser(request);
             log.info("SSE 연결 요청: 사용자={}", currentUser.getName());
             return notificationService.createSseEmitter(currentUser.getId());

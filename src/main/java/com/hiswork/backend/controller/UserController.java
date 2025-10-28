@@ -2,22 +2,25 @@ package com.hiswork.backend.controller;
 
 import com.hiswork.backend.domain.User;
 import com.hiswork.backend.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/users")
+@RequestMapping("/users")
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 @Slf4j
 public class UserController {
-    
+
     private final UserRepository userRepository;
 
     @GetMapping("/search")
@@ -35,8 +38,8 @@ public class UserController {
             } else {
                 // 이메일 또는 이름으로 검색
                 users = userRepository.findByEmailContainingIgnoreCaseOrNameContainingIgnoreCase(
-                        query.trim(), query.trim()
-                ).stream()
+                                query.trim(), query.trim()
+                        ).stream()
                         .limit(20)
                         .collect(Collectors.toList());
             }
@@ -44,8 +47,8 @@ public class UserController {
             // 민감한 정보 제외하고 반환
             List<Map<String, Object>> result = users.stream()
                     .map(user -> {
-                          Map<String, Object> userMap = Map.of(
-                                  "id", user.getId(),
+                        Map<String, Object> userMap = Map.of(
+                                "id", user.getId(),
                                 "email", user.getEmail() != null ? user.getEmail() : "",
                                 "name", user.getName(),
                                 "position", user.getPosition() != null ? user.getPosition().name() : ""

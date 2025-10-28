@@ -2,99 +2,106 @@ package com.hiswork.backend.controller;
 
 import com.hiswork.backend.domain.Document;
 import com.hiswork.backend.domain.User;
+import com.hiswork.backend.dto.BulkCommitRequest;
+import com.hiswork.backend.dto.BulkCommitResponse;
 import com.hiswork.backend.dto.DocumentCreateRequest;
 import com.hiswork.backend.dto.DocumentResponse;
 import com.hiswork.backend.dto.DocumentUpdateRequest;
 import com.hiswork.backend.repository.UserRepository;
+import com.hiswork.backend.service.BulkDocumentService;
 import com.hiswork.backend.service.DocumentService;
+import com.hiswork.backend.service.ExcelParsingService;
+import com.hiswork.backend.service.PdfService;
 import com.hiswork.backend.util.AuthUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import java.util.Optional;
-import com.hiswork.backend.service.PdfService;
-import com.hiswork.backend.service.ExcelParsingService;
-import com.hiswork.backend.service.BulkDocumentService;
-import com.hiswork.backend.dto.BulkCommitRequest;
-import com.hiswork.backend.dto.BulkCommitResponse;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/documents")
+@RequestMapping("/documents")
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 public class DocumentController {
-    
+
     private final DocumentService documentService;
     private final UserRepository userRepository;
     private final AuthUtil authUtil;
     private final PdfService pdfService;
     private final ExcelParsingService excelParsingService;
     private final BulkDocumentService bulkDocumentService;
-    
+
     @PostMapping
     public ResponseEntity<?> createDocument(
             @Valid @RequestBody DocumentCreateRequest request,
             HttpServletRequest httpRequest) {
-        
+
         log.info("Document creation request: {}", request);
-        
+
         try {
             User creator = getCurrentUser(httpRequest);
             log.info("Creator user: {}", creator.getId());
-            
+
             // 스테이징 ID가 있으면 대량 문서 생성 (엑셀 업로드 후)
             if (request.getStagingId() != null && !request.getStagingId().trim().isEmpty()) {
                 log.info("스테이징 ID 발견, 대량 문서 생성 실행: {}", request.getStagingId());
-                log.info("요청자 정보 - ID: {}, 이메일: {}, deadline: {}", creator.getId(), creator.getEmail(), request.getDeadline());
+                log.info("요청자 정보 - ID: {}, 이메일: {}, deadline: {}", creator.getId(), creator.getEmail(),
+                        request.getDeadline());
 
                 BulkCommitRequest bulkRequest = new BulkCommitRequest();
                 bulkRequest.setStagingId(request.getStagingId());
                 bulkRequest.setOnDuplicate(BulkCommitRequest.OnDuplicateAction.SKIP); // 기본값
                 bulkRequest.setDeadline(request.getDeadline()); // deadline 설정
-                
+
                 BulkCommitResponse bulkResponse = bulkDocumentService.commitBulkCreation(bulkRequest, creator);
-                
-                log.info("대량 문서 생성 완료 - 생성: {}, 건너뜀: {}, 실패: {}", 
+
+                log.info("대량 문서 생성 완료 - 생성: {}, 건너뜀: {}, 실패: {}",
                         bulkResponse.getCreated(), bulkResponse.getSkipped(), bulkResponse.getFailed());
-                
+
                 return ResponseEntity.status(HttpStatus.CREATED)
                         .body(bulkResponse);
             }
             // 기존 단일 문서 생성
             else {
                 log.info("단일 문서 생성 실행");
-                
+
                 Document document = documentService.createDocument(
-                        request.getTemplateId(), 
-                        creator, 
+                        request.getTemplateId(),
+                        creator,
                         request.getEditorEmail(),
                         request.getTitle(),
                         request.getDeadline()
                 );
-                
+
                 log.info("Document created successfully with ID: {}", document.getId());
                 return ResponseEntity.status(HttpStatus.CREATED)
                         .body(DocumentResponse.from(document));
             }
-            
+
         } catch (Exception e) {
             log.error("Error creating document", e);
             return ResponseEntity.badRequest()
                     .body(Map.of("error", e.getMessage()));
         }
     }
-    
+
     @GetMapping
     public ResponseEntity<List<DocumentResponse>> getAllDocuments(HttpServletRequest httpRequest) {
         try {
@@ -104,14 +111,14 @@ public class DocumentController {
                     .map(document -> documentService.getDocumentResponse(document.getId()))
                     .filter(response -> response != null)
                     .collect(Collectors.toList());
-            
+
             return ResponseEntity.ok(responses);
         } catch (Exception e) {
             log.error("Error getting all documents", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
-    
+
     // 처리 해야 할 문서 리스트 조회 
     @GetMapping("/todo")
     public ResponseEntity<List<DocumentResponse>> getTodoDocuments(HttpServletRequest httpRequest) {
@@ -122,14 +129,14 @@ public class DocumentController {
                     .map(document -> documentService.getDocumentResponse(document.getId()))
                     .filter(response -> response != null)
                     .collect(Collectors.toList());
-            
+
             return ResponseEntity.ok(responses);
         } catch (Exception e) {
             log.error("Error getting todo documents", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
-    
+
     @GetMapping("/{id}")
     public ResponseEntity<DocumentResponse> getDocument(@PathVariable Long id) {
         try {
@@ -144,19 +151,19 @@ public class DocumentController {
             return ResponseEntity.notFound().build();
         }
     }
-    
+
     @PutMapping("/{id}")
     public ResponseEntity<?> updateDocument(
-            @PathVariable Long id, 
+            @PathVariable Long id,
             @Valid @RequestBody DocumentUpdateRequest request,
             HttpServletRequest httpRequest) {
-        
+
         try {
             log.info("Updating document {} with data: {}", id, request.getData());
-            
+
             User user = getCurrentUser(httpRequest);
             Document document = documentService.updateDocumentData(id, request, user);
-            
+
             log.info("Document updated successfully: {}", id);
             return ResponseEntity.ok(DocumentResponse.from(document));
         } catch (Exception e) {
@@ -165,17 +172,17 @@ public class DocumentController {
                     .body(Map.of("error", e.getMessage()));
         }
     }
-    
+
     @PostMapping("/{id}/assign-editor")
     public ResponseEntity<?> assignEditor(
-            @PathVariable Long id, 
+            @PathVariable Long id,
             @RequestBody Map<String, String> request,
             HttpServletRequest httpRequest) {
-        
+
         try {
             String editorEmail = request.get("editorEmail");
             User user = getCurrentUser(httpRequest);
-            
+
             Document document = documentService.assignEditor(id, editorEmail, user);
             log.info("Editor assigned successfully to document {}", id);
             return ResponseEntity.ok(DocumentResponse.from(document));
@@ -185,21 +192,21 @@ public class DocumentController {
                     .body(Map.of("error", e.getMessage()));
         }
     }
-    
+
     @PostMapping("/{id}/assign-reviewer")
     public ResponseEntity<?> assignReviewer(
-            @PathVariable Long id, 
+            @PathVariable Long id,
             @RequestBody Map<String, String> request,
             HttpServletRequest httpRequest) {
-        
+
         try {
             String reviewerEmail = request.get("reviewerEmail");
             User user = getCurrentUser(httpRequest);
-            
-            log.info("검토자 할당 요청 - 문서 ID: {}, 검토자: {}, 요청자: {}", 
+
+            log.info("검토자 할당 요청 - 문서 ID: {}, 검토자: {}, 요청자: {}",
 //                    id, reviewerEmail, user.getId());
                     id, reviewerEmail, user.getEmail());
-            
+
             Document document = documentService.assignReviewer(id, reviewerEmail, user);
             log.info("Reviewer assigned successfully to document {}", id);
             return ResponseEntity.ok(DocumentResponse.from(document));
@@ -209,12 +216,12 @@ public class DocumentController {
                     .body(Map.of("error", e.getMessage()));
         }
     }
-    
+
     @PostMapping("/{id}/submit-for-review")
     public ResponseEntity<?> submitForReview(
             @PathVariable Long id,
             HttpServletRequest httpRequest) {
-        
+
         try {
             User user = getCurrentUser(httpRequest);
             Document document = documentService.submitForReview(id, user);
@@ -226,66 +233,66 @@ public class DocumentController {
                     .body(Map.of("error", e.getMessage()));
         }
     }
-    
+
     @GetMapping("/{id}/download-pdf")
     public ResponseEntity<?> downloadPdf(@PathVariable Long id, HttpServletRequest httpRequest) {
         try {
             User user = getCurrentUser(httpRequest);
-            
+
             // 문서 조회
             Document document = documentService.getDocumentById(id)
                     .orElseThrow(() -> new RuntimeException("Document not found"));
-            
+
             // PDF 기반 템플릿인지 확인 (pdfFilePath가 있는지로 판단)
             if (document.getTemplate().getPdfFilePath() == null) {
                 return ResponseEntity.badRequest()
                         .body(Map.of("error", "PDF 다운로드는 PDF 기반 템플릿만 지원됩니다."));
             }
-            
+
             // PDF 생성
             String completedPdfPath = pdfService.generateCompletedPdf(
-                document.getTemplate().getPdfFilePath(),
-                null, // coordinateFields는 더 이상 사용하지 않음
-                document.getData(),
-                document.getTemplate().getName()
+                    document.getTemplate().getPdfFilePath(),
+                    null, // coordinateFields는 더 이상 사용하지 않음
+                    document.getData(),
+                    document.getTemplate().getName()
             );
-            
+
             log.info("PDF 다운로드 요청 - 문서 ID: {}, 상태: {}", id, document.getStatus());
             log.info("템플릿 파일 경로: {}", document.getTemplate().getPdfFilePath());
             log.info("문서 데이터: {}", document.getData());
-            
+
             // 생성된 PDF 파일을 바이트 배열로 읽기
             byte[] pdfBytes = Files.readAllBytes(Paths.get(completedPdfPath));
-            
+
             // 파일명 설정 (한글 파일명 지원)
             String filename = document.getTemplate().getName() + "_완성본.pdf";
             String encodedFilename = java.net.URLEncoder.encode(filename, "UTF-8")
-                .replaceAll("\\+", "%20");
-            
+                    .replaceAll("\\+", "%20");
+
             // PDF 파일 반환
             return ResponseEntity.ok()
                     .header("Content-Type", "application/pdf")
                     .header("Content-Disposition", "attachment; filename*=UTF-8''" + encodedFilename)
                     .body(pdfBytes);
-            
+
         } catch (Exception e) {
             log.error("PDF 다운로드 실패: {}", e.getMessage(), e);
             return ResponseEntity.badRequest()
                     .body(Map.of("error", e.getMessage()));
         }
     }
-    
+
     @PostMapping("/{documentId}/start-editing")
     public ResponseEntity<?> startEditing(
             @PathVariable Long documentId,
             HttpServletRequest httpRequest) {
-        
+
         try {
             User user = getCurrentUser(httpRequest);
             log.info("편집 시작 요청 - 문서 ID: {}, 사용자: {}", documentId, user.getId());
-            
+
             Document document = documentService.startEditing(documentId, user);
-            
+
             log.info("편집 시작 성공 - 문서 ID: {}, 상태: {}", documentId, document.getStatus());
             return ResponseEntity.ok(DocumentResponse.from(document));
         } catch (Exception e) {
@@ -294,23 +301,23 @@ public class DocumentController {
                     .body(Map.of("error", e.getMessage()));
         }
     }
-    
+
     @PostMapping("/{documentId}/complete-editing")
     public ResponseEntity<?> completeEditing(
             @PathVariable Long documentId,
             HttpServletRequest httpRequest) {
-        
+
         try {
             User user = getCurrentUser(httpRequest);
             log.info("편집 완료 요청 - 문서 ID: {}, 사용자: {}", documentId, user.getId());
-            
+
             // 문서 존재 확인
             Document document = documentService.getDocumentById(documentId)
                     .orElseThrow(() -> new RuntimeException("문서를 찾을 수 없습니다"));
             log.info("문서 상태 확인 - 현재 상태: {}", document.getStatus());
-            
+
             Document updatedDocument = documentService.completeEditing(documentId, user);
-            
+
             log.info("편집 완료 성공 - 문서 ID: {}, 새 상태: {}", documentId, updatedDocument.getStatus());
             return ResponseEntity.ok(DocumentResponse.from(updatedDocument));
         } catch (Exception e) {
@@ -319,18 +326,18 @@ public class DocumentController {
                     .body(Map.of("error", e.getMessage()));
         }
     }
-    
+
     @PostMapping("/{documentId}/complete-signer-assignment")
     public ResponseEntity<?> completeSignerAssignment(
             @PathVariable Long documentId,
             HttpServletRequest httpRequest) {
-        
+
         try {
             User user = getCurrentUser(httpRequest);
             log.info("서명자 지정 완료 요청 - 문서 ID: {}, 사용자: {}", documentId, user.getId());
-            
+
             Document document = documentService.completeSignerAssignment(documentId, user);
-            
+
             log.info("서명자 지정 완료 성공 - 문서 ID: {}, 새 상태: {}", documentId, document.getStatus());
             return ResponseEntity.ok(DocumentResponse.from(document));
         } catch (Exception e) {
@@ -345,31 +352,31 @@ public class DocumentController {
             @PathVariable Long documentId,
             @RequestBody Map<String, Object> requestBody,
             HttpServletRequest httpRequest) {
-        
+
         User user = getCurrentUser(httpRequest);
-        
+
         String signatureData = (String) requestBody.get("signatureData");
-        
+
         Document document = documentService.approveDocument(documentId, user, signatureData);
-        
+
         return ResponseEntity.ok(DocumentResponse.from(document));
     }
-    
+
     @PostMapping("/{documentId}/reject")
     public ResponseEntity<DocumentResponse> rejectDocument(
             @PathVariable Long documentId,
             @RequestBody Map<String, Object> requestBody,
             HttpServletRequest httpRequest) {
-        
+
         User user = getCurrentUser(httpRequest);
-        
+
         String reason = (String) requestBody.get("reason");
-        
+
         Document document = documentService.rejectDocument(documentId, user, reason);
-        
+
         return ResponseEntity.ok(DocumentResponse.from(document));
     }
-    
+
     @GetMapping("/{documentId}/can-review")
     public ResponseEntity<Boolean> canReview(@PathVariable Long documentId, HttpServletRequest httpRequest) {
         try {
@@ -387,9 +394,9 @@ public class DocumentController {
         try {
             User user = getCurrentUser(httpRequest);
             log.info("🗑️ 문서 삭제 API 호출 - 문서 ID: {}, 사용자: {}", id, user.getEmail());
-            
+
             documentService.deleteDocument(id, user);
-            
+
             log.info("✅ 문서 삭제 성공 - 문서 ID: {}, 사용자: {}", id, user.getEmail());
             return ResponseEntity.ok().build();
         } catch (Exception e) {
@@ -401,7 +408,7 @@ public class DocumentController {
     private User getCurrentUser(HttpServletRequest request) {
         try {
             log.info("=== JWT 토큰 추출 시작 ===");
-            
+
             // 모든 헤더 로깅 (디버깅용)
             java.util.Enumeration<String> headerNames = request.getHeaderNames();
             while (headerNames.hasMoreElements()) {
@@ -409,21 +416,21 @@ public class DocumentController {
                 String headerValue = request.getHeader(headerName);
                 log.info("Header - {}: {}", headerName, headerValue);
             }
-            
+
             // Authorization 헤더 확인
             String authHeader = request.getHeader("Authorization");
             log.info("Authorization 헤더: {}", authHeader);
-            
+
             if (authHeader == null) {
                 log.warn("Authorization 헤더가 없습니다");
                 throw new RuntimeException("Authorization 헤더가 없습니다");
             }
-            
+
             if (!authHeader.startsWith("Bearer ")) {
                 log.warn("Bearer 토큰 형식이 아닙니다: {}", authHeader);
                 throw new RuntimeException("Bearer 토큰 형식이 아닙니다");
             }
-            
+
             // JWT 토큰에서 사용자 정보 추출 시도
             User user = authUtil.getCurrentUser(request);
 //            log.info("JWT 토큰에서 추출된 사용자: {} ({})", user.getName(), user.getId());
@@ -436,7 +443,7 @@ public class DocumentController {
             throw new RuntimeException("인증이 필요합니다. 로그인 후 다시 시도해주세요.");
         }
     }
-    
+
     /**
      * 문서 조회 표시 API - 사용자가 문서를 조회했음을 표시
      */
@@ -444,16 +451,16 @@ public class DocumentController {
     public ResponseEntity<?> markDocumentAsViewed(
             @PathVariable Long id,
             HttpServletRequest httpRequest) {
-        
+
         log.info("문서 조회 표시 요청 - DocumentId: {}", id);
-        
+
         try {
             User currentUser = getCurrentUser(httpRequest);
             documentService.markDocumentAsViewed(id, currentUser);
-            
+
             return ResponseEntity.ok()
                     .body(Map.of("success", true, "message", "문서 조회가 표시되었습니다."));
-                    
+
         } catch (Exception e) {
             log.error("문서 조회 표시 실패 - DocumentId: {}", id, e);
             return ResponseEntity.badRequest()
