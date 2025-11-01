@@ -105,14 +105,14 @@ public class DocumentService {
         }
 
         // 편집자가 지정되었고 생성자와 다른 경우에만 메일 전송
-        if (editorEmail != null && !editorEmail.trim().isEmpty() && editor != null && !editor.getId().equals(creator.getId())) {
+        if (editorEmail != null && !editorEmail.trim().isEmpty() && !editor.getId().equals(creator.getId())) {
             mailService.sendAssignEditorNotification(MailRequest.EditorAssignmentEmailCommand.builder()
                             .documentTitle(template.getName())
                             .creatorName(creator.getName())
                             .editorEmail(editorEmail)
                             .editorName(editor.getName())
                             .dueDate(document.getDeadline() != null ? document.getDeadline().atZone(java.time.ZoneId.systemDefault()) : null)
-                            .projectName("Hiswork")
+                            .projectName("CoWorks")
                     .build());
         }
 
@@ -279,7 +279,7 @@ public class DocumentService {
                         .reviewerEmail(reviewerEmail)
                         .reviewerName(reviewer.getName())
                         .reviewDueDate(document.getDeadline() != null ? document.getDeadline().atZone(java.time.ZoneId.systemDefault()) : null)
-                        .projectName("Hiswork") // 프로젝트 이름 따로 관리해야할듯. 지금은 고정값
+                        .projectName("CoWorks") // 프로젝트 이름 따로 관리해야할듯. 지금은 고정값
                 .build());
 
         // 서명자 지정만 하고 상태는 READY_FOR_REVIEW 유지 (서명 필드 배치 후 completeSignerAssignment로 REVIEWING으로 변경)
