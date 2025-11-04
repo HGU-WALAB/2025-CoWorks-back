@@ -6,6 +6,7 @@ import com.hiswork.backend.dto.MailRequest;
 import com.hiswork.backend.repository.UserRepository;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -16,6 +17,7 @@ import org.thymeleaf.context.Context;
 
 import java.nio.charset.StandardCharsets;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,7 +32,8 @@ public class MailService {
     private final TemplateEngine templateEngine;
 
     DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.of("Asia/Seoul"));
-    private static final String linkDomain = "http://localhost:5173/tasks";
+
+    private static final String linkDomain = "https://coworks.walab.info/tasks";
 
 
     /**
@@ -41,7 +44,6 @@ public class MailService {
     public void sendAssignEditorNotification(MailRequest.EditorAssignmentEmailCommand command) {
         try {
             Context ctx = new Context();
-            ctx.setVariable("projectName", command.getProjectName());
             ctx.setVariable("documentTitle", command.getDocumentTitle());
             ctx.setVariable("actionLink", linkDomain);
             ctx.setVariable("creatorName", command.getCreatorName());
@@ -53,7 +55,7 @@ public class MailService {
             MimeMessage mime = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(mime, true, StandardCharsets.UTF_8.name());
             helper.setTo(command.getEditorEmail());
-            helper.setSubject("[CoWorks] 편집자 할당 알림");
+            helper.setSubject("[CoWorks] " + command.getDocumentTitle() + " 문서의 편집자로 지정되었음을 알려드립니다.");
             helper.setText(html, true);
 
 
@@ -73,7 +75,6 @@ public class MailService {
     public void sendAssignReviewerNotification(MailRequest.ReviewerAssignmentEmailCommand command) {
         try {
             Context ctx = new Context();
-            ctx.setVariable("projectName", command.getProjectName());
             ctx.setVariable("documentTitle", command.getDocumentTitle());
             ctx.setVariable("actionLink", linkDomain);
             ctx.setVariable("editorName", command.getEditorName());
@@ -85,7 +86,7 @@ public class MailService {
             MimeMessage mime = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(mime, true, StandardCharsets.UTF_8.name());
             helper.setTo(command.getReviewerEmail());
-            helper.setSubject("[CoWorks] 검토자 할당 알림");
+            helper.setSubject("[CoWorks] " + command.getDocumentTitle() + " 문서의 검토자로 지정되었음을 알려드립니다.");
             helper.setText(html, true);
 
 //            helper.addInline("logoImage", new ClassPathResource("static/images/hiswork-logo.png"));
@@ -94,6 +95,33 @@ public class MailService {
             throw new RuntimeException("검토자 할당 메일 전송 실패", e);
         }
     }
+
+    @Async
+    public void sendAssignRejectNotification(MailRequest.RejectionAssignmentEmailCommand command) {
+        try {
+            Context ctx = new Context();
+            ctx.setVariable("documentTitle", command.getDocumentTitle());
+            ctx.setVariable("actionLink", linkDomain);
+            ctx.setVariable("editorName", command.getEditorName());
+            ctx.setVariable("rejecterName", command.getRejecterName());
+            ctx.setVariable("rejectionReason", command.getRejectionReason());
+            ctx.setVariable("rejectionDate", fmt.format(ZonedDateTime.now()));
+            ctx.setVariable("dueDate", command.getDueDate() != null ? fmt.format(command.getDueDate()) : null);
+
+            String html = templateEngine.process("assign_rejection_notification", ctx);
+
+            MimeMessage mime = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mime, true, StandardCharsets.UTF_8.name());
+            helper.setTo(command.getEditorEmail());
+            helper.setSubject("[CoWorks] " + command.getDocumentTitle() + " 문서가 반려되었음을 알려드립니다.");
+            helper.setText(html, true);
+
+            mailSender.send(mime);
+        } catch (Exception e) {
+            throw new RuntimeException("문서 반려 메일 전송 실패", e);
+        }
+    }
+
     /**
      * 테스트용 TA 보고 메일<br/>
      * 실제 실패 리스트 없이 테스트용 1개만

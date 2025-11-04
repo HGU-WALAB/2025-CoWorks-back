@@ -107,12 +107,11 @@ public class DocumentService {
         // 편집자가 지정되었고 생성자와 다른 경우에만 메일 전송
         if (editorEmail != null && !editorEmail.trim().isEmpty() && !editor.getId().equals(creator.getId())) {
             mailService.sendAssignEditorNotification(MailRequest.EditorAssignmentEmailCommand.builder()
-                            .documentTitle(template.getName())
+                            .documentTitle(document.getTitle())
                             .creatorName(creator.getName())
                             .editorEmail(editorEmail)
                             .editorName(editor.getName())
                             .dueDate(document.getDeadline() != null ? document.getDeadline().atZone(java.time.ZoneId.systemDefault()) : null)
-                            .projectName("CoWorks")
                     .build());
         }
 
@@ -274,12 +273,11 @@ public class DocumentService {
         createDocumentAssignmentNotification(reviewer, document, DocumentRole.TaskRole.REVIEWER);
 
         mailService.sendAssignReviewerNotification(MailRequest.ReviewerAssignmentEmailCommand.builder()
-                        .documentTitle(document.getTemplate().getName()) // 문서 제목도 관리 해야함.
+                        .documentTitle(document.getTitle()) // 문서 제목도 관리 해야함.
                         .editorName(assignedBy.getName())
                         .reviewerEmail(reviewerEmail)
                         .reviewerName(reviewer.getName())
                         .reviewDueDate(document.getDeadline() != null ? document.getDeadline().atZone(java.time.ZoneId.systemDefault()) : null)
-                        .projectName("CoWorks") // 프로젝트 이름 따로 관리해야할듯. 지금은 고정값
                 .build());
 
         // 서명자 지정만 하고 상태는 READY_FOR_REVIEW 유지 (서명 필드 배치 후 completeSignerAssignment로 REVIEWING으로 변경)
@@ -521,45 +519,57 @@ public class DocumentService {
         document = documentRepository.save(document);
 
         // 편집자의 lastViewedAt을 null로 초기화하여 NEW 상태로 만들기
-        final Document finalDocument = document; // 람다 표현식에서 사용하기 위한 final 변수
+        final Document finalDocument = document;
+        final User[] editorHolder = new User[1];
+
+        // 편집자 lastViewedAt 초기화 + 알림
         documentRoleRepository.findByDocumentAndRole(documentId, DocumentRole.TaskRole.EDITOR)
                 .ifPresent(editorRole -> {
                     editorRole.setLastViewedAt(null);
                     documentRoleRepository.save(editorRole);
-                    log.info("편집자 역할의 lastViewedAt 초기화 완료 - DocumentRoleId: {}", editorRole.getId());
-                    
-                    // 편집자에게 반려 알림 생성
+
                     if (editorRole.getAssignedUserId() != null) {
                         userRepository.findById(editorRole.getAssignedUserId())
                                 .ifPresent(editor -> {
+                                    // 알림 생성
                                     try {
                                         String title = "문서 반려 알림";
-                                        String message = String.format("'%s' 문서가 반려되었습니다. 수정 후 다시 검토 요청해주세요.", 
+                                        String message = String.format("'%s' 문서가 반려되었습니다. 수정 후 다시 검토 요청해주세요.",
                                                 finalDocument.getTitle() != null ? finalDocument.getTitle() : finalDocument.getTemplate().getName());
                                         String actionUrl = "/documents/" + finalDocument.getId() + "/edit";
-                                        
+
                                         notificationService.createNotification(
-                                            editor,
-                                            title,
-                                            message,
-                                            NotificationType.DOCUMENT_REJECTED,
-                                            finalDocument.getId(),
-                                            actionUrl
+                                                editor,
+                                                title,
+                                                message,
+                                                NotificationType.DOCUMENT_REJECTED,
+                                                finalDocument.getId(),
+                                                actionUrl
                                         );
-                                        
-                                        log.info("문서 반려 알림 생성 완료 - 편집자: {}, 문서: {}", 
-                                                editor.getName(), finalDocument.getTitle());
                                     } catch (Exception e) {
-                                        log.error("문서 반려 알림 생성 실패 - 편집자: {}, 문서: {}", 
+                                        log.error("문서 반려 알림 생성 실패 - 편집자: {}, 문서: {}",
                                                 editor.getName(), finalDocument.getTitle(), e);
                                     }
+                                    editorHolder[0] = editor;
                                 });
                     }
                 });
-
         // 검토자 역할은 유지 (반려 후에도 검토자가 자신이 반려한 문서를 확인할 수 있도록)
 //        documentRoleRepository.findByDocumentAndRole(documentId, DocumentRole.TaskRole.REVIEWER)
 //                .ifPresent(existingRole -> documentRoleRepository.delete(existingRole));
+        if (editorHolder[0] != null) {
+            mailService.sendAssignRejectNotification(
+                    MailRequest.RejectionAssignmentEmailCommand.builder()
+                            .documentTitle(document.getTitle())
+                            .editorName(editorHolder[0].getName())
+                            .editorEmail(editorHolder[0].getEmail())
+                            .rejectionReason(reason)
+                            .dueDate(document.getDeadline() != null ? document.getDeadline().atZone(java.time.ZoneId.systemDefault()) : null)
+                            .rejecterName(user.getName())
+                            .build()
+            );
+        }
+
 
         log.info("문서 반려 완료 - 문서 ID: {}, 검토자: {} (검토자 역할 유지, 편집자 NEW 상태로 초기화)", documentId, user.getEmail());
         

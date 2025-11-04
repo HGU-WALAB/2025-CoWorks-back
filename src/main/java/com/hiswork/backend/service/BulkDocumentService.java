@@ -345,7 +345,6 @@ public class BulkDocumentService {
                     .editorEmail(editorEmail)
                     .editorName(editorName)
                     .dueDate(document.getDeadline() != null ? document.getDeadline().atZone(java.time.ZoneId.systemDefault()) : null)
-                    .projectName("CoWorks")
                     .build());
             
             if (existingUser.isPresent()) {
