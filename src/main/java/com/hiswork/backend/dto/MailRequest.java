@@ -37,7 +37,6 @@ public class MailRequest {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class EditorAssignmentEmailCommand {
-        String projectName;
         String documentTitle;
         String creatorName;
         String editorEmail;
@@ -50,12 +49,24 @@ public class MailRequest {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class ReviewerAssignmentEmailCommand {
-        String projectName;
         String documentTitle;
         String editorName;
         String reviewerEmail;
         String reviewerName;
         String reviewScope;
         ZonedDateTime reviewDueDate;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class RejectionAssignmentEmailCommand {
+        String documentTitle;
+        String editorEmail;
+        String editorName;
+        String rejecterName;
+        String rejectionReason;
+        ZonedDateTime dueDate;
     }
 }
