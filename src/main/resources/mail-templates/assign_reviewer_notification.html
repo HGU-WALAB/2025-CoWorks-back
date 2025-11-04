@@ -72,9 +72,6 @@
                                     <p style="margin:0 0 8px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.7;color:#374151;">
                                         문서: <strong th:text="${documentTitle}">문서 제목</strong>
                                     </p>
-                                    <p style="margin:0 0 8px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.7;color:#374151;">
-                                        프로젝트: <span th:text="${projectName}">프로젝트 명</span>
-                                    </p>
                                     <p th:if="${reviewDueDateStr != null}" style="margin:0 0 8px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.7;color:#c2410c;">
                                         검토 마감: <strong th:text="${reviewDueDateStr}">YYYY-MM-DD HH:mm</strong>
                                     </p>
