@@ -23,6 +23,7 @@ public class FolderService {
     
     private final FolderRepository folderRepository;
     private final DocumentRepository documentRepository;
+    private final DocumentService documentService;
     
     /**
      * 폴더 접근 권한 확인
@@ -247,7 +248,8 @@ public class FolderService {
         
         List<Document> documents = documentRepository.findByFolderOrderByCreatedAtDesc(folder);
         return documents.stream()
-                .map(DocumentResponse::from)
+                .map(document -> documentService.getDocumentResponse(document.getId()))
+                .filter(response -> response != null)
                 .collect(Collectors.toList());
     }
     
@@ -260,7 +262,8 @@ public class FolderService {
         
         List<Document> documents = documentRepository.findByFolderIsNullOrderByCreatedAtDesc();
         return documents.stream()
-                .map(DocumentResponse::from)
+                .map(document -> documentService.getDocumentResponse(document.getId()))
+                .filter(response -> response != null)
                 .collect(Collectors.toList());
     }
     
