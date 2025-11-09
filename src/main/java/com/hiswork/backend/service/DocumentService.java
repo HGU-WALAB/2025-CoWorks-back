@@ -482,14 +482,30 @@ public class DocumentService {
             throw new RuntimeException("문서가 검토 대기 상태가 아닙니다");
         }
         
-        // 서명 데이터를 문서 데이터에 추가
+        // 서명 데이터를 coordinateFields 배열의 해당 필드에 직접 저장
         if (signatureData != null && document.getData() != null) {
             ObjectNode data = (ObjectNode) document.getData();
-            ObjectNode signatures = data.has("signatures") ? 
-                    (ObjectNode) data.get("signatures") : objectMapper.createObjectNode();
-            signatures.put(user.getEmail(), signatureData);
-            data.set("signatures", signatures);
-            document.setData(data);
+            
+            // coordinateFields 배열 가져오기
+            if (data.has("coordinateFields")) {
+                ArrayNode coordinateFields = (ArrayNode) data.get("coordinateFields");
+                
+                // reviewer_signature 타입이면서 reviewerEmail이 현재 사용자인 필드 찾기
+                for (int i = 0; i < coordinateFields.size(); i++) {
+                    ObjectNode field = (ObjectNode) coordinateFields.get(i);
+                    
+                    if ("reviewer_signature".equals(field.get("type").asText()) &&
+                        field.has("reviewerEmail") &&
+                        user.getEmail().equals(field.get("reviewerEmail").asText())) {
+                        // 해당 필드의 value에 서명 데이터 저장
+                        field.put("value", signatureData);
+                    }
+                }
+                
+                // 업데이트된 coordinateFields 저장
+                data.set("coordinateFields", coordinateFields);
+                document.setData(data);
+            }
         }
         
         // 상태를 COMPLETED로 변경
