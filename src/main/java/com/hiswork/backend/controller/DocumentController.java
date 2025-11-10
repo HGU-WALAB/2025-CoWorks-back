@@ -217,6 +217,29 @@ public class DocumentController {
         }
     }
 
+    @DeleteMapping("/{id}/remove-reviewer")
+    public ResponseEntity<?> removeReviewer(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> request,
+            HttpServletRequest httpRequest) {
+
+        try {
+            String reviewerEmail = request.get("reviewerEmail");
+            User user = getCurrentUser(httpRequest);
+
+            log.info("검토자 제거 요청 - 문서 ID: {}, 검토자: {}, 요청자: {}",
+                    id, reviewerEmail, user.getEmail());
+
+            Document document = documentService.removeReviewer(id, reviewerEmail, user);
+            log.info("Reviewer removed successfully from document {}", id);
+            return ResponseEntity.ok(DocumentResponse.from(document));
+        } catch (Exception e) {
+            log.error("Error removing reviewer from document {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", e.getMessage()));
+        }
+    }
+
     @PostMapping("/{id}/submit-for-review")
     public ResponseEntity<?> submitForReview(
             @PathVariable Long id,
