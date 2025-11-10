@@ -109,6 +109,7 @@ public class DocumentService {
         // 편집자가 지정되었고 생성자와 다른 경우에만 메일 전송
         if (editorEmail != null && !editorEmail.trim().isEmpty() && !editor.getId().equals(creator.getId())) {
             mailService.sendAssignEditorNotification(MailRequest.EditorAssignmentEmailCommand.builder()
+                            .documentId(document.getId())
                             .documentTitle(document.getTitle())
                             .creatorName(creator.getName())
                             .editorEmail(editorEmail)
@@ -282,6 +283,7 @@ public class DocumentService {
         createDocumentAssignmentNotification(reviewer, document, DocumentRole.TaskRole.REVIEWER);
 
         mailService.sendAssignReviewerNotification(MailRequest.ReviewerAssignmentEmailCommand.builder()
+                        .documentId(document.getId())
                         .documentTitle(document.getTitle()) // 문서 제목도 관리 해야함.
                         .editorName(assignedBy.getName())
                         .reviewerEmail(reviewerEmail)
@@ -691,6 +693,7 @@ public class DocumentService {
         if (editorHolder[0] != null) {
             mailService.sendAssignRejectNotification(
                     MailRequest.RejectionAssignmentEmailCommand.builder()
+                            .documentId(document.getId())
                             .documentTitle(document.getTitle())
                             .editorName(editorHolder[0].getName())
                             .editorEmail(editorHolder[0].getEmail())
