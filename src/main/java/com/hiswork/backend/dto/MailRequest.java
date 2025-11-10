@@ -37,6 +37,7 @@ public class MailRequest {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class EditorAssignmentEmailCommand {
+        Long documentId;
         String documentTitle;
         String creatorName;
         String editorEmail;
@@ -49,6 +50,7 @@ public class MailRequest {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class ReviewerAssignmentEmailCommand {
+        Long documentId;
         String documentTitle;
         String editorName;
         String reviewerEmail;
@@ -62,6 +64,7 @@ public class MailRequest {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class RejectionAssignmentEmailCommand {
+        Long documentId;
         String documentTitle;
         String editorEmail;
         String editorName;

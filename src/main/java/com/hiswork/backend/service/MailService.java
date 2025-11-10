@@ -33,7 +33,8 @@ public class MailService {
 
     DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.of("Asia/Seoul"));
 
-    private static final String linkDomain = "https://coworks.walab.info/tasks";
+    private static final String linkDomain = "http://localhost:5173/";
+//    private static final String linkDomain = "https://coworks.walab.info/";
 
 
     /**
@@ -45,7 +46,7 @@ public class MailService {
         try {
             Context ctx = new Context();
             ctx.setVariable("documentTitle", command.getDocumentTitle());
-            ctx.setVariable("actionLink", linkDomain);
+            ctx.setVariable("actionLink", linkDomain + "tasks/");
             ctx.setVariable("creatorName", command.getCreatorName());
             ctx.setVariable("editorName", command.getEditorName());
             ctx.setVariable("dueDate", command.getDueDate() != null ? fmt.format(command.getDueDate()) : null);
@@ -76,7 +77,7 @@ public class MailService {
         try {
             Context ctx = new Context();
             ctx.setVariable("documentTitle", command.getDocumentTitle());
-            ctx.setVariable("actionLink", linkDomain);
+            ctx.setVariable("actionLink", linkDomain + "documents/" + command.getDocumentId() + "/review");
             ctx.setVariable("editorName", command.getEditorName());
             ctx.setVariable("reviewerName", command.getReviewerName());
             ctx.setVariable("reviewDueDateStr", command.getReviewDueDate() != null ? fmt.format(command.getReviewDueDate()) : null);
@@ -101,7 +102,7 @@ public class MailService {
         try {
             Context ctx = new Context();
             ctx.setVariable("documentTitle", command.getDocumentTitle());
-            ctx.setVariable("actionLink", linkDomain);
+            ctx.setVariable("actionLink", linkDomain + "documents/" + command.getDocumentId() + "/edit");
             ctx.setVariable("editorName", command.getEditorName());
             ctx.setVariable("rejecterName", command.getRejecterName());
             ctx.setVariable("rejectionReason", command.getRejectionReason());
