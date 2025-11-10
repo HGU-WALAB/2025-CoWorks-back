@@ -17,6 +17,9 @@ public interface DocumentRoleRepository extends JpaRepository<DocumentRole, Long
     @Query("SELECT dr FROM DocumentRole dr WHERE dr.document.id = :documentId AND dr.taskRole = :taskRole")
     Optional<DocumentRole> findByDocumentAndRole(@Param("documentId") Long documentId, @Param("taskRole") DocumentRole.TaskRole taskRole);
     
+    @Query("SELECT dr FROM DocumentRole dr WHERE dr.document.id = :documentId AND dr.taskRole = :taskRole")
+    List<DocumentRole> findAllByDocumentIdAndTaskRole(@Param("documentId") Long documentId, @Param("taskRole") DocumentRole.TaskRole taskRole);
+    
     @Query("SELECT dr FROM DocumentRole dr WHERE dr.document.id = :documentId AND dr.assignedUserId = :userId")
     Optional<DocumentRole> findByDocumentAndUser(@Param("documentId") Long documentId, @Param("userId") String userId);
     
