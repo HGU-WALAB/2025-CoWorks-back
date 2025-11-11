@@ -52,7 +52,7 @@ public class DocumentRole {
     private LocalDateTime updatedAt;
     
     public enum TaskRole {
-        CREATOR, EDITOR, REVIEWER
+        CREATOR, EDITOR, REVIEWER, SIGNER
     }
     
     /**
