@@ -31,10 +31,10 @@ public class MailService {
     private final JavaMailSender mailSender;
     private final TemplateEngine templateEngine;
 
-    DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.of("Asia/Seoul"));
+    DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
-    private static final String linkDomain = "http://localhost:5173/";
-//    private static final String linkDomain = "https://coworks.walab.info/";
+//    private static final String linkDomain = "http://localhost:5173/";
+    private static final String linkDomain = "https://coworks.walab.info/";
 
 
     /**
@@ -106,7 +106,7 @@ public class MailService {
             ctx.setVariable("editorName", command.getEditorName());
             ctx.setVariable("rejecterName", command.getRejecterName());
             ctx.setVariable("rejectionReason", command.getRejectionReason());
-            ctx.setVariable("rejectionDate", fmt.format(ZonedDateTime.now()));
+            ctx.setVariable("rejectionDate", fmt.withZone(ZoneId.of("Asia/Seoul")).format(ZonedDateTime.now()));
             ctx.setVariable("dueDate", command.getDueDate() != null ? fmt.format(command.getDueDate()) : null);
 
             String html = templateEngine.process("assign_rejection_notification", ctx);
