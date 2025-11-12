@@ -236,6 +236,9 @@ public class DocumentService {
         return document;
     }
     
+    /**
+     * 검토자 지정
+     */
     public Document assignReviewer(Long documentId, String reviewerEmail, User assignedBy) {
         log.info("검토자 할당 요청 - 문서 ID: {}, 검토자 이메일: {}, 요청자: {}", 
                 documentId, reviewerEmail, assignedBy.getId());
@@ -284,14 +287,79 @@ public class DocumentService {
 
         mailService.sendAssignReviewerNotification(MailRequest.ReviewerAssignmentEmailCommand.builder()
                         .documentId(document.getId())
-                        .documentTitle(document.getTitle()) // 문서 제목도 관리 해야함.
+                        .documentTitle(document.getTitle())
                         .editorName(assignedBy.getName())
                         .reviewerEmail(reviewerEmail)
                         .reviewerName(reviewer.getName())
                         .reviewDueDate(document.getDeadline() != null ? document.getDeadline().atZone(java.time.ZoneId.systemDefault()) : null)
                 .build());
 
-        // 서명자 지정만 하고 상태는 READY_FOR_REVIEW 유지 (서명 필드 배치 후 completeSignerAssignment로 REVIEWING으로 변경)
+        // 검토자 지정만 하고 상태는 READY_FOR_REVIEW 유지
+        documentRepository.save(document);
+        
+        return document;
+    }
+    
+    /**
+     * 서명자 지정 (기존 assignReviewer 로직 재사용)
+     */
+    public Document assignSigner(Long documentId, String signerEmail, User assignedBy) {
+        log.info("서명자 할당 요청 - 문서 ID: {}, 서명자 이메일: {}, 요청자: {}", 
+                documentId, signerEmail, assignedBy.getId());
+
+        Document document = documentRepository.findById(documentId)
+                .orElseThrow(() -> new RuntimeException("Document not found"));
+        
+        log.info("문서 정보 - ID: {}, 상태: {}", 
+                document.getId(), document.getStatus());
+        
+        // 서명자 할당 권한 확인 - 생성자 또는 편집자 가능
+        boolean isCreator = isCreator(document, assignedBy);
+        boolean isEditor = isEditor(document, assignedBy);
+        
+        log.info("권한 확인 - 요청자: {}, 생성자 여부: {}, 편집자 여부: {}", 
+                assignedBy.getId(), isCreator, isEditor);
+        
+        if (!isCreator && !isEditor) {
+            throw new RuntimeException("서명자를 할당할 권한이 없습니다. 생성자 또는 편집자만 가능합니다.");
+        }
+        
+        User signer = getUserOrCreate(signerEmail, "Signer User");
+        
+        // 이미 동일한 서명자가 있는지 확인
+        boolean isAlreadyAssigned = documentRoleRepository.findAllByDocumentIdAndTaskRole(
+                documentId, DocumentRole.TaskRole.SIGNER)
+                .stream()
+                .anyMatch(role -> role.getAssignedUserId().equals(signer.getId()));
+        
+        if (isAlreadyAssigned) {
+            log.warn("이미 지정된 서명자입니다 - 문서 ID: {}, 서명자 ID: {}", documentId, signer.getId());
+            throw new RuntimeException("이미 지정된 서명자입니다.");
+        }
+        
+        // 새로운 서명자 역할 할당 (기존 서명자 제거하지 않음)
+        DocumentRole signerRole = DocumentRole.builder()
+                .document(document)
+                .assignedUserId(signer.getId())
+                .taskRole(DocumentRole.TaskRole.SIGNER)
+                .build();
+        
+        documentRoleRepository.save(signerRole);
+        
+        // 서명자에게 알림 생성
+        createDocumentAssignmentNotification(signer, document, DocumentRole.TaskRole.SIGNER);
+
+        // 메일 전송 (서명자용)
+        mailService.sendAssignReviewerNotification(MailRequest.ReviewerAssignmentEmailCommand.builder()
+                        .documentId(document.getId())
+                        .documentTitle(document.getTitle())
+                        .editorName(assignedBy.getName())
+                        .reviewerEmail(signerEmail)
+                        .reviewerName(signer.getName())
+                        .reviewDueDate(document.getDeadline() != null ? document.getDeadline().atZone(java.time.ZoneId.systemDefault()) : null)
+                .build());
+
+        // 서명자 지정만 하고 상태는 유지 (서명 필드 배치 후 completeSignerAssignment로 SIGNING으로 변경)
         documentRepository.save(document);
         
         return document;
@@ -336,9 +404,103 @@ public class DocumentService {
         
         return document;
     }
+    
+    /**
+     * 서명자 제거
+     */
+    public Document removeSigner(Long documentId, String signerEmail, User removedBy) {
+        log.info("서명자 제거 요청 - 문서 ID: {}, 서명자 이메일: {}, 요청자: {}", 
+                documentId, signerEmail, removedBy.getId());
+
+        Document document = documentRepository.findById(documentId)
+                .orElseThrow(() -> new RuntimeException("Document not found"));
+        
+        // 서명자 제거 권한 확인 - 생성자 또는 편집자 가능
+        boolean isCreator = isCreator(document, removedBy);
+        boolean isEditor = isEditor(document, removedBy);
+        
+        if (!isCreator && !isEditor) {
+            throw new RuntimeException("서명자를 제거할 권한이 없습니다. 생성자 또는 편집자만 가능합니다.");
+        }
+        
+        User signer = userRepository.findByEmail(signerEmail)
+                .orElseThrow(() -> new RuntimeException("서명자를 찾을 수 없습니다."));
+        
+        // 해당 서명자의 역할 찾기
+        List<DocumentRole> signerRoles = documentRoleRepository.findAllByDocumentIdAndTaskRole(
+                documentId, DocumentRole.TaskRole.SIGNER)
+                .stream()
+                .filter(role -> role.getAssignedUserId().equals(signer.getId()))
+                .collect(java.util.stream.Collectors.toList());
+        
+        if (signerRoles.isEmpty()) {
+            throw new RuntimeException("지정된 서명자가 아닙니다.");
+        }
+        
+        // 서명자 역할 제거
+        documentRoleRepository.deleteAll(signerRoles);
+        
+        log.info("서명자 제거 완료 - 문서 ID: {}, 서명자 ID: {}", documentId, signer.getId());
+        
+        return document;
+    }
 
     /**
-     * 서명자 지정 완료 후 리뷰 단계로 이동
+     * 검토자 지정 완료 후 검토 단계로 이동 (READY_FOR_REVIEW -> REVIEWING)
+     * 또는 검토 단계 건너뛰고 바로 서명 단계로 이동 (skipReview=true인 경우)
+     */
+    public Document completeReviewerAssignment(Long documentId, User user, boolean skipReview) {
+        log.info("검토자 지정 완료 처리 시작 - 문서 ID: {}, 사용자: {}, 검토 건너뛰기: {}", 
+                documentId, user.getId(), skipReview);
+        
+        Document document = documentRepository.findById(documentId)
+                .orElseThrow(() -> new RuntimeException("Document not found"));
+        
+        // 검토자 지정 권한 확인
+        if (!canAssignReviewer(document, user)) {
+            throw new RuntimeException("검토자 지정 권한이 없습니다");
+        }
+        
+        // 현재 상태가 READY_FOR_REVIEW이어야 함
+        if (document.getStatus() != Document.DocumentStatus.READY_FOR_REVIEW) {
+            throw new RuntimeException("문서가 검토자 지정 상태가 아닙니다");
+        }
+        
+        if (skipReview) {
+            // 검토 단계 건너뛰고 바로 서명 단계로 이동
+            // 서명자가 지정되어 있는지 확인
+            boolean hasSigner = documentRoleRepository.existsByDocumentIdAndTaskRole(
+                    documentId, DocumentRole.TaskRole.SIGNER);
+            
+            if (!hasSigner) {
+                throw new RuntimeException("서명자가 지정되지 않았습니다");
+            }
+            
+            changeDocumentStatus(document, Document.DocumentStatus.SIGNING, user, "검토 단계 건너뛰기 - 서명 단계로 이동");
+            log.info("검토 단계 건너뛰기 - 문서 ID: {}, READY_FOR_REVIEW -> SIGNING", documentId);
+        } else {
+            // 검토자가 지정되어 있는지 확인
+            boolean hasReviewer = documentRoleRepository.existsByDocumentIdAndTaskRole(
+                    documentId, DocumentRole.TaskRole.REVIEWER);
+            
+            if (!hasReviewer) {
+                throw new RuntimeException("검토자가 지정되지 않았습니다");
+            }
+            
+            // 상태를 REVIEWING으로 변경
+            changeDocumentStatus(document, Document.DocumentStatus.REVIEWING, user, "검토자 지정 완료 - 검토 단계로 이동");
+            log.info("검토 단계로 이동 - 문서 ID: {}, READY_FOR_REVIEW -> REVIEWING", documentId);
+        }
+        
+        document = documentRepository.save(document);
+        
+        log.info("검토자 지정 완료 처리 완료 - 문서 ID: {}", documentId);
+        return document;
+    }
+    
+    /**
+     * 서명자 지정 완료 및 템플릿 생성자를 검토자로 자동 지정 (READY_FOR_REVIEW -> REVIEWING)
+     * 프론트엔드 워크플로우: 작성자가 서명자만 지정 → 서명자 지정 완료 → 템플릿 생성자가 자동으로 검토자가 됨
      */
     public Document completeSignerAssignment(Long documentId, User user) {
         log.info("서명자 지정 완료 처리 시작 - 문서 ID: {}, 사용자: {}", documentId, user.getId());
@@ -351,24 +513,76 @@ public class DocumentService {
             throw new RuntimeException("서명자 지정 권한이 없습니다");
         }
         
-        // 현재 상태가 READY_FOR_REVIEW이어야 함 (서명자 지정 단계)
+        // 현재 상태가 READY_FOR_REVIEW여야 함 (서명자 지정 후)
         if (document.getStatus() != Document.DocumentStatus.READY_FOR_REVIEW) {
             throw new RuntimeException("문서가 서명자 지정 상태가 아닙니다");
         }
         
         // 서명자가 지정되어 있는지 확인
-        boolean hasReviewer = documentRoleRepository.existsByDocumentIdAndTaskRole(
-                documentId, DocumentRole.TaskRole.REVIEWER);
+        boolean hasSigner = documentRoleRepository.existsByDocumentIdAndTaskRole(
+                documentId, DocumentRole.TaskRole.SIGNER);
         
-        if (!hasReviewer) {
+        if (!hasSigner) {
             throw new RuntimeException("서명자가 지정되지 않았습니다");
         }
         
+        // 템플릿 생성자를 검토자로 자동 지정
+        User templateCreator = document.getTemplate().getCreatedBy();
+        
+        if (templateCreator == null) {
+            throw new RuntimeException("템플릿 생성자 정보를 찾을 수 없습니다");
+        }
+        
+        // 템플릿 생성자가 이미 검토자로 지정되어 있는지 확인
+        boolean isAlreadyReviewer = documentRoleRepository.findAllByDocumentIdAndTaskRole(
+                documentId, DocumentRole.TaskRole.REVIEWER)
+                .stream()
+                .anyMatch(role -> role.getAssignedUserId().equals(templateCreator.getId()));
+        
+        if (!isAlreadyReviewer) {
+            // 템플릿 생성자를 검토자로 지정
+            DocumentRole reviewerRole = DocumentRole.builder()
+                    .document(document)
+                    .assignedUserId(templateCreator.getId())
+                    .taskRole(DocumentRole.TaskRole.REVIEWER)
+                    .build();
+            
+            documentRoleRepository.save(reviewerRole);
+            
+            log.info("템플릿 생성자를 검토자로 자동 지정 - 문서 ID: {}, 검토자: {} ({})", 
+                    documentId, templateCreator.getName(), templateCreator.getEmail());
+            
+            // 템플릿 생성자에게 알림 생성
+            createDocumentAssignmentNotification(templateCreator, document, DocumentRole.TaskRole.REVIEWER);
+            
+            // 템플릿 생성자에게 이메일 발송
+            try {
+                mailService.sendAssignReviewerNotification(MailRequest.ReviewerAssignmentEmailCommand.builder()
+                        .documentId(document.getId())
+                        .documentTitle(document.getTitle())
+                        .editorName(user.getName())
+                        .reviewerEmail(templateCreator.getEmail())
+                        .reviewerName(templateCreator.getName())
+                        .reviewDueDate(document.getDeadline() != null ? 
+                                document.getDeadline().atZone(java.time.ZoneId.systemDefault()) : null)
+                        .build());
+                
+                log.info("템플릿 생성자에게 검토 알림 이메일 발송 완료 - 수신자: {}", templateCreator.getEmail());
+            } catch (Exception e) {
+                log.error("템플릿 생성자에게 검토 알림 이메일 발송 실패: {}", e.getMessage(), e);
+                // 이메일 발송 실패는 전체 프로세스를 중단시키지 않음
+            }
+        } else {
+            log.info("템플릿 생성자가 이미 검토자로 지정되어 있음 - 문서 ID: {}, 검토자: {}", 
+                    documentId, templateCreator.getEmail());
+        }
+        
         // 상태를 REVIEWING으로 변경
-        changeDocumentStatus(document, Document.DocumentStatus.REVIEWING, user, "서명자 지정 완료 - 리뷰 단계로 이동");
+        changeDocumentStatus(document, Document.DocumentStatus.REVIEWING, user, 
+                "서명자 지정 완료 - 템플릿 생성자 검토 단계로 이동");
         document = documentRepository.save(document);
         
-        log.info("서명자 지정 완료 처리 완료 - 문서 ID: {}", documentId);
+        log.info("서명자 지정 완료 및 검토 단계 시작 - 문서 ID: {}, 상태: REVIEWING", documentId);
         return document;
     }
     
@@ -470,6 +684,12 @@ public class DocumentService {
         ).isPresent();
     }
     
+    private boolean isSigner(Document document, User user) {
+        return documentRoleRepository.findByDocumentAndUserAndRole(
+                document.getId(), user.getId(), DocumentRole.TaskRole.SIGNER
+        ).isPresent();
+    }
+    
     private User getUserOrCreate(String email, String defaultName) {
         return userRepository.findByEmail(email)
                 .orElseGet(() -> {
@@ -519,18 +739,139 @@ public class DocumentService {
         return document;
     }
     
-    public Document approveDocument(Long documentId, User user, String signatureData) {
+    /**
+     * 검토자가 문서 검토 승인 (REVIEWING -> 서명자에게 전달, 자동으로 SIGNING으로 또는 서명자 지정 대기)
+     */
+    public Document approveReview(Long documentId, User user, String comment) {
         Document document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new RuntimeException("Document not found"));
         
         // 검토자만 승인 가능
         if (!isReviewer(document, user)) {
-            throw new RuntimeException("문서를 승인할 권한이 없습니다");
+            throw new RuntimeException("문서를 검토 승인할 권한이 없습니다");
         }
         
         // 현재 상태가 REVIEWING 이어야 함
         if (document.getStatus() != Document.DocumentStatus.REVIEWING) {
-            throw new RuntimeException("문서가 검토 대기 상태가 아닙니다");
+            throw new RuntimeException("문서가 검토 상태가 아닙니다");
+        }
+        
+        // 상태 로그 기록
+        String commentText = comment != null ? comment : "검토 승인";
+        changeDocumentStatus(document, document.getStatus(), user, commentText);
+        
+        // 서명자가 이미 지정되어 있는지 확인
+        boolean hasSigner = documentRoleRepository.existsByDocumentIdAndTaskRole(
+                documentId, DocumentRole.TaskRole.SIGNER);
+        
+        if (hasSigner) {
+            // 서명자가 지정되어 있으면 바로 SIGNING 상태로 변경
+            changeDocumentStatus(document, Document.DocumentStatus.SIGNING, user, "검토 승인 완료 - 서명 단계로 자동 이동");
+            log.info("검토 승인 후 자동으로 서명 단계로 이동 - 문서 ID: {}", documentId);
+        } else {
+            // 서명자가 없으면 REVIEWING 상태 유지 (편집자가 서명자 지정 후 completeSignerAssignment 호출 필요)
+            log.info("검토 승인 완료 - 서명자 지정 대기 중 - 문서 ID: {}", documentId);
+        }
+        
+        document = documentRepository.save(document);
+        
+        log.info("검토 승인 완료 - 문서 ID: {}, 검토자: {}", documentId, user.getEmail());
+        return document;
+    }
+    
+    /**
+     * 검토자가 문서 검토 반려 (REVIEWING -> EDITING)
+     */
+    public Document rejectReview(Long documentId, User user, String reason) {
+        Document document = documentRepository.findById(documentId)
+                .orElseThrow(() -> new RuntimeException("Document not found"));
+        
+        // 검토자만 반려 가능
+        if (!isReviewer(document, user)) {
+            throw new RuntimeException("문서를 반려할 권한이 없습니다");
+        }
+        
+        // 현재 상태가 REVIEWING 이어야 함
+        if (document.getStatus() != Document.DocumentStatus.REVIEWING) {
+            throw new RuntimeException("문서가 검토 상태가 아닙니다");
+        }
+        
+        // 상태를 EDITING으로 변경
+        changeDocumentStatus(document, Document.DocumentStatus.EDITING, user, reason != null ? reason : "검토 반려");
+        document.setIsRejected(true);
+        document = documentRepository.save(document);
+        
+        // 편집자의 lastViewedAt을 null로 초기화하여 NEW 상태로 만들기
+        final Document finalDocument = document;
+        final User[] editorHolder = new User[1];
+        
+        // 편집자 lastViewedAt 초기화 + 알림
+        documentRoleRepository.findByDocumentAndRole(documentId, DocumentRole.TaskRole.EDITOR)
+                .ifPresent(editorRole -> {
+                    editorRole.setLastViewedAt(null);
+                    documentRoleRepository.save(editorRole);
+                    
+                    if (editorRole.getAssignedUserId() != null) {
+                        userRepository.findById(editorRole.getAssignedUserId())
+                                .ifPresent(editor -> {
+                                    // 알림 생성
+                                    try {
+                                        String title = "문서 검토 반려 알림";
+                                        String message = String.format("'%s' 문서가 검토 단계에서 반려되었습니다. 수정 후 다시 검토 요청해주세요.",
+                                                finalDocument.getTitle() != null ? finalDocument.getTitle() : finalDocument.getTemplate().getName());
+                                        String actionUrl = "/documents/" + finalDocument.getId() + "/edit";
+                                        
+                                        notificationService.createNotification(
+                                                editor,
+                                                title,
+                                                message,
+                                                NotificationType.DOCUMENT_REJECTED,
+                                                finalDocument.getId(),
+                                                actionUrl
+                                        );
+                                    } catch (Exception e) {
+                                        log.error("검토 반려 알림 생성 실패 - 편집자: {}, 문서: {}",
+                                                editor.getName(), finalDocument.getTitle(), e);
+                                    }
+                                    editorHolder[0] = editor;
+                                });
+                    }
+                });
+        
+        // 메일 전송
+        if (editorHolder[0] != null) {
+            mailService.sendAssignRejectNotification(
+                    MailRequest.RejectionAssignmentEmailCommand.builder()
+                            .documentId(document.getId())
+                            .documentTitle(document.getTitle())
+                            .editorName(editorHolder[0].getName())
+                            .editorEmail(editorHolder[0].getEmail())
+                            .rejectionReason(reason)
+                            .dueDate(document.getDeadline() != null ? document.getDeadline().atZone(java.time.ZoneId.systemDefault()) : null)
+                            .rejecterName(user.getName())
+                            .build()
+            );
+        }
+        
+        log.info("검토 반려 완료 - 문서 ID: {}, 검토자: {}", documentId, user.getEmail());
+        return document;
+    }
+    
+    /**
+     * 서명자가 문서 서명 (SIGNING -> COMPLETED 또는 다른 서명자 대기)
+     */
+    public Document approveDocument(Long documentId, User user, String signatureData) {
+        Document document = documentRepository.findById(documentId)
+                .orElseThrow(() -> new RuntimeException("Document not found"));
+        
+        // 서명자만 승인 가능
+        if (!isSigner(document, user)) {
+            throw new RuntimeException("문서를 서명할 권한이 없습니다");
+        }
+        
+        // 현재 상태가 SIGNING 이어야 함
+        if (document.getStatus() != Document.DocumentStatus.SIGNING) {
+            throw new RuntimeException("문서가 서명 대기 상태가 아닙니다");
         }
         
         // 서명 데이터를 coordinateFields 배열의 해당 필드에 직접 저장
@@ -541,14 +882,23 @@ public class DocumentService {
             if (data.has("coordinateFields")) {
                 ArrayNode coordinateFields = (ArrayNode) data.get("coordinateFields");
                 
-                // reviewer_signature 타입이면서 reviewerEmail이 현재 사용자인 필드 찾기
+                // signer_signature 타입이면서 signerEmail이 현재 사용자인 필드 찾기
+                // (하위 호환성: reviewer_signature도 지원)
                 for (int i = 0; i < coordinateFields.size(); i++) {
                     ObjectNode field = (ObjectNode) coordinateFields.get(i);
+                    String fieldType = field.get("type").asText();
                     
-                    if ("reviewer_signature".equals(field.get("type").asText()) &&
-                        field.has("reviewerEmail") &&
-                        user.getEmail().equals(field.get("reviewerEmail").asText())) {
+                    // signer_signature 또는 reviewer_signature 타입 모두 지원
+                    if (("signer_signature".equals(fieldType) || "reviewer_signature".equals(fieldType)) &&
+                        field.has("signerEmail") &&
+                        user.getEmail().equals(field.get("signerEmail").asText())) {
                         // 해당 필드의 value에 서명 데이터 저장
+                        field.put("value", signatureData);
+                    }
+                    // 하위 호환성: reviewerEmail 필드도 확인
+                    else if (("signer_signature".equals(fieldType) || "reviewer_signature".equals(fieldType)) &&
+                             field.has("reviewerEmail") &&
+                             user.getEmail().equals(field.get("reviewerEmail").asText())) {
                         field.put("value", signatureData);
                     }
                 }
@@ -563,15 +913,15 @@ public class DocumentService {
         document = documentRepository.save(document);
         
         // 모든 서명자가 서명했는지 확인
-        boolean allReviewersSigned = checkAllReviewersSigned(document);
+        boolean allSignersSigned = checkAllSignersSigned(document);
         
-        if (allReviewersSigned) {
+        if (allSignersSigned) {
             // 모든 서명자가 서명했으면 상태를 COMPLETED로 변경
             log.info("모든 서명자가 서명 완료 - 문서 ID: {}, 상태를 COMPLETED로 변경", documentId);
             changeDocumentStatus(document, Document.DocumentStatus.COMPLETED, user, "모든 서명자 승인 완료");
             document = documentRepository.save(document);
         } else {
-            // 아직 서명하지 않은 서명자가 있으면 REVIEWING 상태 유지
+            // 아직 서명하지 않은 서명자가 있으면 SIGNING 상태 유지
             log.info("서명 완료 - 문서 ID: {}, 사용자: {}, 다른 서명자 대기 중", documentId, user.getEmail());
         }
         
@@ -581,24 +931,24 @@ public class DocumentService {
     /**
      * 모든 서명자가 서명했는지 확인
      */
-    private boolean checkAllReviewersSigned(Document document) {
-        // 지정된 모든 검토자 가져오기
-        List<DocumentRole> reviewerRoles = documentRoleRepository.findAllByDocumentIdAndTaskRole(
-                document.getId(), DocumentRole.TaskRole.REVIEWER);
+    private boolean checkAllSignersSigned(Document document) {
+        // 지정된 모든 서명자 가져오기
+        List<DocumentRole> signerRoles = documentRoleRepository.findAllByDocumentIdAndTaskRole(
+                document.getId(), DocumentRole.TaskRole.SIGNER);
         
-        if (reviewerRoles.isEmpty()) {
-            log.warn("검토자가 없습니다 - 문서 ID: {}", document.getId());
+        if (signerRoles.isEmpty()) {
+            log.warn("서명자가 없습니다 - 문서 ID: {}", document.getId());
             return false;
         }
         
-        // 모든 검토자의 이메일 수집
-        Set<String> reviewerEmails = new HashSet<>();
-        for (DocumentRole role : reviewerRoles) {
+        // 모든 서명자의 이메일 수집
+        Set<String> signerEmails = new HashSet<>();
+        for (DocumentRole role : signerRoles) {
             Optional<User> userOpt = userRepository.findById(role.getAssignedUserId());
-            userOpt.ifPresent(user -> reviewerEmails.add(user.getEmail()));
+            userOpt.ifPresent(user -> signerEmails.add(user.getEmail()));
         }
         
-        // coordinateFields에서 reviewer_signature 타입 필드 확인
+        // coordinateFields에서 signer_signature 타입 필드 확인
         if (document.getData() == null || !document.getData().has("coordinateFields")) {
             log.warn("coordinateFields가 없습니다 - 문서 ID: {}", document.getId());
             return false;
@@ -606,44 +956,57 @@ public class DocumentService {
         
         ArrayNode coordinateFields = (ArrayNode) document.getData().get("coordinateFields");
         
-        // 각 검토자별 서명 여부 확인
-        Set<String> signedReviewers = new HashSet<>();
+        // 각 서명자별 서명 여부 확인
+        Set<String> signedSigners = new HashSet<>();
         for (int i = 0; i < coordinateFields.size(); i++) {
             JsonNode field = coordinateFields.get(i);
+            String fieldType = field.get("type").asText();
             
-            if ("reviewer_signature".equals(field.get("type").asText()) &&
-                field.has("reviewerEmail") &&
+            // signer_signature 또는 reviewer_signature (하위 호환성) 타입 확인
+            if (("signer_signature".equals(fieldType) || "reviewer_signature".equals(fieldType)) &&
                 field.has("value") &&
                 field.get("value") != null &&
                 !field.get("value").isNull() &&
                 !field.get("value").asText().isEmpty()) {
                 
-                String reviewerEmail = field.get("reviewerEmail").asText();
-                signedReviewers.add(reviewerEmail);
+                // signerEmail 또는 reviewerEmail (하위 호환성) 필드 확인
+                String signerEmail = null;
+                if (field.has("signerEmail")) {
+                    signerEmail = field.get("signerEmail").asText();
+                } else if (field.has("reviewerEmail")) {
+                    signerEmail = field.get("reviewerEmail").asText();
+                }
+                
+                if (signerEmail != null) {
+                    signedSigners.add(signerEmail);
+                }
             }
         }
         
-        // 모든 검토자가 서명했는지 확인
-        boolean allSigned = signedReviewers.containsAll(reviewerEmails);
+        // 모든 서명자가 서명했는지 확인
+        boolean allSigned = signedSigners.containsAll(signerEmails);
         
-        log.info("서명 상태 확인 - 문서 ID: {}, 전체 검토자: {}, 서명 완료: {}, 모두 서명: {}", 
-                document.getId(), reviewerEmails.size(), signedReviewers.size(), allSigned);
+        log.info("서명 상태 확인 - 문서 ID: {}, 전체 서명자: {}, 서명 완료: {}, 모두 서명: {}", 
+                document.getId(), signerEmails.size(), signedSigners.size(), allSigned);
         
         return allSigned;
     }
     
+    /**
+     * 서명자가 문서 서명 반려 (SIGNING -> EDITING)
+     */
     public Document rejectDocument(Long documentId, User user, String reason) {
         Document document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new RuntimeException("Document not found"));
         
-        // 검토자만 거부 가능
-        if (!isReviewer(document, user)) {
-            throw new RuntimeException("문서를 거부할 권한이 없습니다");
+        // 서명자만 거부 가능
+        if (!isSigner(document, user)) {
+            throw new RuntimeException("문서를 반려할 권한이 없습니다");
         }
         
-        // 현재 상태가 REVIEWING 이어야 함
-        if (document.getStatus() != Document.DocumentStatus.REVIEWING) {
-            throw new RuntimeException("문서가 검토 대기 상태가 아닙니다");
+        // 현재 상태가 SIGNING 이어야 함
+        if (document.getStatus() != Document.DocumentStatus.SIGNING) {
+            throw new RuntimeException("문서가 서명 대기 상태가 아닙니다");
         }
         
         // 상태를 Editing 변경
@@ -687,9 +1050,7 @@ public class DocumentService {
                                 });
                     }
                 });
-        // 검토자 역할은 유지 (반려 후에도 검토자가 자신이 반려한 문서를 확인할 수 있도록)
-//        documentRoleRepository.findByDocumentAndRole(documentId, DocumentRole.TaskRole.REVIEWER)
-//                .ifPresent(existingRole -> documentRoleRepository.delete(existingRole));
+        // 서명자 역할은 유지 (반려 후에도 서명자가 자신이 반려한 문서를 확인할 수 있도록)
         if (editorHolder[0] != null) {
             mailService.sendAssignRejectNotification(
                     MailRequest.RejectionAssignmentEmailCommand.builder()
@@ -732,9 +1093,23 @@ public class DocumentService {
             
             // 검토자이고 문서가 검토 대기 상태인지 확인
             return isReviewer(document, user) && 
-                   document.getStatus() == Document.DocumentStatus.READY_FOR_REVIEW;
+                   document.getStatus() == Document.DocumentStatus.REVIEWING;
         } catch (Exception e) {
             log.error("Error checking review permission for document {} and user {}", documentId, user.getId(), e);
+            return false;
+        }
+    }
+    
+    public boolean canSign(Long documentId, User user) {
+        try {
+            Document document = getDocumentById(documentId)
+                    .orElseThrow(() -> new RuntimeException("Document not found"));
+            
+            // 서명자이고 문서가 서명 대기 상태인지 확인
+            return isSigner(document, user) && 
+                   document.getStatus() == Document.DocumentStatus.SIGNING;
+        } catch (Exception e) {
+            log.error("Error checking sign permission for document {} and user {}", documentId, user.getId(), e);
             return false;
         }
     }    private void validateRequiredFields(Document document) {
@@ -933,6 +1308,8 @@ public class DocumentService {
                 return "새로운 문서 편집 요청";
             case REVIEWER:
                 return "새로운 문서 검토 요청";
+            case SIGNER:
+                return "새로운 문서 서명 요청";
             case CREATOR:
                 return "문서가 생성되었습니다";
             default:
@@ -951,6 +1328,8 @@ public class DocumentService {
                 return "'" + documentTitle + "' 문서의 편집자로 지정되었습니다.";
             case REVIEWER:
                 return "'" + documentTitle + "' 문서의 검토자로 지정되었습니다.";
+            case SIGNER:
+                return "'" + documentTitle + "' 문서의 서명자로 지정되었습니다.";
             case CREATOR:
                 return "'" + documentTitle + "' 문서를 성공적으로 생성했습니다.";
             default:

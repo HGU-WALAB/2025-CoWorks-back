@@ -193,6 +193,9 @@ public class DocumentController {
         }
     }
 
+    /**
+     * 검토자 지정
+     */
     @PostMapping("/{id}/assign-reviewer")
     public ResponseEntity<?> assignReviewer(
             @PathVariable Long id,
@@ -204,7 +207,6 @@ public class DocumentController {
             User user = getCurrentUser(httpRequest);
 
             log.info("검토자 할당 요청 - 문서 ID: {}, 검토자: {}, 요청자: {}",
-//                    id, reviewerEmail, user.getId());
                     id, reviewerEmail, user.getEmail());
 
             Document document = documentService.assignReviewer(id, reviewerEmail, user);
@@ -216,7 +218,36 @@ public class DocumentController {
                     .body(Map.of("error", e.getMessage()));
         }
     }
+    
+    /**
+     * 서명자 지정
+     */
+    @PostMapping("/{id}/assign-signer")
+    public ResponseEntity<?> assignSigner(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> request,
+            HttpServletRequest httpRequest) {
 
+        try {
+            String signerEmail = request.get("signerEmail");
+            User user = getCurrentUser(httpRequest);
+
+            log.info("서명자 할당 요청 - 문서 ID: {}, 서명자: {}, 요청자: {}",
+                    id, signerEmail, user.getEmail());
+
+            Document document = documentService.assignSigner(id, signerEmail, user);
+            log.info("Signer assigned successfully to document {}", id);
+            return ResponseEntity.ok(DocumentResponse.from(document));
+        } catch (Exception e) {
+            log.error("Error assigning signer to document {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * 검토자 제거
+     */
     @DeleteMapping("/{id}/remove-reviewer")
     public ResponseEntity<?> removeReviewer(
             @PathVariable Long id,
@@ -235,6 +266,32 @@ public class DocumentController {
             return ResponseEntity.ok(DocumentResponse.from(document));
         } catch (Exception e) {
             log.error("Error removing reviewer from document {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", e.getMessage()));
+        }
+    }
+    
+    /**
+     * 서명자 제거
+     */
+    @DeleteMapping("/{id}/remove-signer")
+    public ResponseEntity<?> removeSigner(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> request,
+            HttpServletRequest httpRequest) {
+
+        try {
+            String signerEmail = request.get("signerEmail");
+            User user = getCurrentUser(httpRequest);
+
+            log.info("서명자 제거 요청 - 문서 ID: {}, 서명자: {}, 요청자: {}",
+                    id, signerEmail, user.getEmail());
+
+            Document document = documentService.removeSigner(id, signerEmail, user);
+            log.info("Signer removed successfully from document {}", id);
+            return ResponseEntity.ok(DocumentResponse.from(document));
+        } catch (Exception e) {
+            log.error("Error removing signer from document {}: {}", id, e.getMessage(), e);
             return ResponseEntity.badRequest()
                     .body(Map.of("error", e.getMessage()));
         }
@@ -350,6 +407,43 @@ public class DocumentController {
         }
     }
 
+    /**
+     * 검토자 지정 완료 및 검토 단계로 이동
+     */
+    @PostMapping("/{documentId}/complete-reviewer-assignment")
+    public ResponseEntity<?> completeReviewerAssignment(
+            @PathVariable Long documentId,
+            @RequestBody(required = false) Map<String, Object> requestBody,
+            HttpServletRequest httpRequest) {
+
+        try {
+            User user = getCurrentUser(httpRequest);
+            boolean skipReview = false;
+            
+            if (requestBody != null && requestBody.containsKey("skipReview")) {
+                skipReview = (Boolean) requestBody.get("skipReview");
+            }
+            
+            log.info("검토자 지정 완료 요청 - 문서 ID: {}, 사용자: {}, 검토 건너뛰기: {}", 
+                    documentId, user.getId(), skipReview);
+
+            Document document = documentService.completeReviewerAssignment(documentId, user, skipReview);
+
+            log.info("검토자 지정 완료 성공 - 문서 ID: {}, 새 상태: {}", documentId, document.getStatus());
+            return ResponseEntity.ok(DocumentResponse.from(document));
+        } catch (Exception e) {
+            log.error("검토자 지정 완료 실패 - 문서 ID: {}, 오류: {}", documentId, e.getMessage(), e);
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", e.getMessage()));
+        }
+    }
+    
+    /**
+     * 서명자 지정 완료 및 검토 단계로 이동
+     * - 템플릿 생성자를 자동으로 검토자로 지정
+     * - 템플릿 생성자에게 검토 알림 발송
+     * - 문서 상태: READY_FOR_REVIEW → REVIEWING
+     */
     @PostMapping("/{documentId}/complete-signer-assignment")
     public ResponseEntity<?> completeSignerAssignment(
             @PathVariable Long documentId,
@@ -361,7 +455,8 @@ public class DocumentController {
 
             Document document = documentService.completeSignerAssignment(documentId, user);
 
-            log.info("서명자 지정 완료 성공 - 문서 ID: {}, 새 상태: {}", documentId, document.getStatus());
+            log.info("서명자 지정 완료 성공 - 문서 ID: {}, 새 상태: {}, 검토자: 템플릿 생성자 자동 지정", 
+                    documentId, document.getStatus());
             return ResponseEntity.ok(DocumentResponse.from(document));
         } catch (Exception e) {
             log.error("서명자 지정 완료 실패 - 문서 ID: {}, 오류: {}", documentId, e.getMessage(), e);
@@ -370,36 +465,105 @@ public class DocumentController {
         }
     }
 
+    /**
+     * 검토 승인 (REVIEWING -> SIGNING 또는 서명자 지정 대기)
+     */
+    @PostMapping("/{documentId}/review/approve")
+    public ResponseEntity<DocumentResponse> approveReview(
+            @PathVariable Long documentId,
+            @RequestBody(required = false) Map<String, Object> requestBody,
+            HttpServletRequest httpRequest) {
+
+        try {
+            User user = getCurrentUser(httpRequest);
+            String comment = requestBody != null ? (String) requestBody.get("comment") : null;
+
+            log.info("검토 승인 요청 - 문서 ID: {}, 검토자: {}", documentId, user.getEmail());
+            Document document = documentService.approveReview(documentId, user, comment);
+
+            return ResponseEntity.ok(DocumentResponse.from(document));
+        } catch (Exception e) {
+            log.error("검토 승인 실패 - 문서 ID: {}, 오류: {}", documentId, e.getMessage(), e);
+            return ResponseEntity.badRequest()
+                    .body(DocumentResponse.builder().build());
+        }
+    }
+
+    /**
+     * 검토 반려 (REVIEWING -> EDITING)
+     */
+    @PostMapping("/{documentId}/review/reject")
+    public ResponseEntity<DocumentResponse> rejectReview(
+            @PathVariable Long documentId,
+            @RequestBody Map<String, Object> requestBody,
+            HttpServletRequest httpRequest) {
+
+        try {
+            User user = getCurrentUser(httpRequest);
+            String reason = (String) requestBody.get("reason");
+
+            log.info("검토 반려 요청 - 문서 ID: {}, 검토자: {}", documentId, user.getEmail());
+            Document document = documentService.rejectReview(documentId, user, reason);
+
+            return ResponseEntity.ok(DocumentResponse.from(document));
+        } catch (Exception e) {
+            log.error("검토 반려 실패 - 문서 ID: {}, 오류: {}", documentId, e.getMessage(), e);
+            return ResponseEntity.badRequest()
+                    .body(DocumentResponse.builder().build());
+        }
+    }
+    
+    /**
+     * 서명 승인 (SIGNING -> COMPLETED 또는 다른 서명자 대기)
+     */
     @PostMapping("/{documentId}/approve")
     public ResponseEntity<DocumentResponse> approveDocument(
             @PathVariable Long documentId,
             @RequestBody Map<String, Object> requestBody,
             HttpServletRequest httpRequest) {
 
-        User user = getCurrentUser(httpRequest);
+        try {
+            User user = getCurrentUser(httpRequest);
+            String signatureData = (String) requestBody.get("signatureData");
 
-        String signatureData = (String) requestBody.get("signatureData");
+            log.info("서명 승인 요청 - 문서 ID: {}, 서명자: {}", documentId, user.getEmail());
+            Document document = documentService.approveDocument(documentId, user, signatureData);
 
-        Document document = documentService.approveDocument(documentId, user, signatureData);
-
-        return ResponseEntity.ok(DocumentResponse.from(document));
+            return ResponseEntity.ok(DocumentResponse.from(document));
+        } catch (Exception e) {
+            log.error("서명 승인 실패 - 문서 ID: {}, 오류: {}", documentId, e.getMessage(), e);
+            return ResponseEntity.badRequest()
+                    .body(DocumentResponse.builder().build());
+        }
     }
 
+    /**
+     * 서명 반려 (SIGNING -> EDITING)
+     */
     @PostMapping("/{documentId}/reject")
     public ResponseEntity<DocumentResponse> rejectDocument(
             @PathVariable Long documentId,
             @RequestBody Map<String, Object> requestBody,
             HttpServletRequest httpRequest) {
 
-        User user = getCurrentUser(httpRequest);
+        try {
+            User user = getCurrentUser(httpRequest);
+            String reason = (String) requestBody.get("reason");
 
-        String reason = (String) requestBody.get("reason");
+            log.info("서명 반려 요청 - 문서 ID: {}, 서명자: {}", documentId, user.getEmail());
+            Document document = documentService.rejectDocument(documentId, user, reason);
 
-        Document document = documentService.rejectDocument(documentId, user, reason);
-
-        return ResponseEntity.ok(DocumentResponse.from(document));
+            return ResponseEntity.ok(DocumentResponse.from(document));
+        } catch (Exception e) {
+            log.error("서명 반려 실패 - 문서 ID: {}, 오류: {}", documentId, e.getMessage(), e);
+            return ResponseEntity.badRequest()
+                    .body(DocumentResponse.builder().build());
+        }
     }
 
+    /**
+     * 검토 권한 확인
+     */
     @GetMapping("/{documentId}/can-review")
     public ResponseEntity<Boolean> canReview(@PathVariable Long documentId, HttpServletRequest httpRequest) {
         try {
@@ -408,6 +572,21 @@ public class DocumentController {
             return ResponseEntity.ok(canReview);
         } catch (Exception e) {
             log.error("Error checking review permission for document {}", documentId, e);
+            return ResponseEntity.ok(false);
+        }
+    }
+    
+    /**
+     * 서명 권한 확인
+     */
+    @GetMapping("/{documentId}/can-sign")
+    public ResponseEntity<Boolean> canSign(@PathVariable Long documentId, HttpServletRequest httpRequest) {
+        try {
+            User user = getCurrentUser(httpRequest);
+            boolean canSign = documentService.canSign(documentId, user);
+            return ResponseEntity.ok(canSign);
+        } catch (Exception e) {
+            log.error("Error checking sign permission for document {}", documentId, e);
             return ResponseEntity.ok(false);
         }
     }

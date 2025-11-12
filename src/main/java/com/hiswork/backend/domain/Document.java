@@ -69,6 +69,6 @@ public class Document {
     private List<DocumentStatusLog> statusLogs = new ArrayList<>();
     
     public enum DocumentStatus {
-        DRAFT, EDITING, READY_FOR_REVIEW, REVIEWING, COMPLETED
+        DRAFT, EDITING, READY_FOR_REVIEW, REVIEWING, SIGNING, COMPLETED, REJECTED
     }
 } 
