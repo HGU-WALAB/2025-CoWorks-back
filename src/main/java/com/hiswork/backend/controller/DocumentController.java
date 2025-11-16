@@ -17,6 +17,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -168,6 +169,47 @@ public class DocumentController {
             return ResponseEntity.ok(DocumentResponse.from(document));
         } catch (Exception e) {
             log.error("Error updating document {}", id, e);
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * 문서 만료일 업데이트 - 생성자만 가능
+     */
+    @PutMapping("/{id}/deadline")
+    public ResponseEntity<?> updateDocumentDeadline(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> request,
+            HttpServletRequest httpRequest) {
+
+        try {
+            User user = getCurrentUser(httpRequest);
+            String deadlineStr = request.get("deadline");
+            
+            LocalDateTime deadline = null;
+            if (deadlineStr != null && !deadlineStr.isEmpty()) {
+                // ISO 8601 형식 (UTC 타임존 포함) 파싱
+                // 예: "2025-11-15T07:08:00.000Z"
+                try {
+                    // ZonedDateTime으로 파싱 후 LocalDateTime으로 변환
+                    java.time.ZonedDateTime zonedDateTime = java.time.ZonedDateTime.parse(deadlineStr);
+                    deadline = zonedDateTime.toLocalDateTime();
+                } catch (Exception e) {
+                    // ISO Local DateTime 형식으로 재시도
+                    deadline = LocalDateTime.parse(deadlineStr);
+                }
+            }
+            
+            log.info("문서 만료일 업데이트 요청 - 문서 ID: {}, 사용자: {}, 만료일: {}", 
+                    id, user.getEmail(), deadline);
+            
+            Document document = documentService.updateDocumentDeadline(id, deadline, user);
+            
+            log.info("문서 만료일 업데이트 성공 - 문서 ID: {}", id);
+            return ResponseEntity.ok(DocumentResponse.from(document));
+        } catch (Exception e) {
+            log.error("문서 만료일 업데이트 실패 - 문서 ID: {}, 오류: {}", id, e.getMessage(), e);
             return ResponseEntity.badRequest()
                     .body(Map.of("error", e.getMessage()));
         }
