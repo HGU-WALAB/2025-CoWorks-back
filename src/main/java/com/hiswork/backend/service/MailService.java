@@ -77,7 +77,7 @@ public class MailService {
         try {
             Context ctx = new Context();
             ctx.setVariable("documentTitle", command.getDocumentTitle());
-            ctx.setVariable("actionLink", linkDomain + "documents/" + command.getDocumentId() + "/review");
+            ctx.setVariable("actionLink", linkDomain + "email-sign/" + command.getDocumentId());
             ctx.setVariable("editorName", command.getEditorName());
             ctx.setVariable("reviewerName", command.getReviewerName());
             ctx.setVariable("reviewDueDateStr", command.getReviewDueDate() != null ? fmt.format(command.getReviewDueDate()) : null);
