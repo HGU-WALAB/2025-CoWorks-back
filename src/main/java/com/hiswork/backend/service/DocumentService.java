@@ -158,8 +158,37 @@ public class DocumentService {
         
         // 문서 데이터 업데이트
         document.setData(request.getData());
+        
+        // deadline 업데이트 (있을 경우)
+        if (request.getDeadline() != null) {
+            document.setDeadline(request.getDeadline());
+            log.info("문서 만료일 업데이트 - 문서 ID: {}, 새 만료일: {}", documentId, request.getDeadline());
+        }
+        
         document = documentRepository.save(document);
 
+        return document;
+    }
+    
+    /**
+     * 문서 만료일 업데이트 - 폴더 접근 권한이 있는 사용자만 가능
+     */
+    public Document updateDocumentDeadline(Long documentId, LocalDateTime deadline, User user) {
+        Document document = documentRepository.findById(documentId)
+                .orElseThrow(() -> new RuntimeException("Document not found"));
+        
+        // 권한 확인 - 폴더 접근 권한이 있는 사용자만 만료일 수정 가능
+        if (!user.canAccessFolders()) {
+            throw new RuntimeException("문서 만료일을 수정할 권한이 없습니다");
+        }
+        
+        // 만료일 업데이트
+        document.setDeadline(deadline);
+        document = documentRepository.save(document);
+        
+        log.info("문서 만료일 업데이트 - 문서 ID: {}, 사용자: {}, 새 만료일: {}", 
+                documentId, user.getEmail(), deadline);
+        
         return document;
     }
     
