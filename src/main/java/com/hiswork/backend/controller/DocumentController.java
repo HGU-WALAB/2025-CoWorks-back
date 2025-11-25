@@ -288,6 +288,37 @@ public class DocumentController {
     }
 
     /**
+     * 서명자 일괄 지정
+     */
+    @PostMapping("/{id}/assign-signers-batch")
+    public ResponseEntity<?> assignSignersBatch(
+            @PathVariable Long id,
+            @RequestBody Map<String, List<String>> request,
+            HttpServletRequest httpRequest) {
+
+        try {
+            List<String> signerEmails = request.get("signerEmails");
+            User user = getCurrentUser(httpRequest);
+
+            log.info("서명자 일괄 할당 요청 - 문서 ID: {}, 서명자 수: {}, 요청자: {}",
+                    id, signerEmails != null ? signerEmails.size() : 0, user.getEmail());
+
+            if (signerEmails == null || signerEmails.isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "서명자 이메일 목록이 비어있습니다."));
+            }
+
+            Document document = documentService.assignSignersBatch(id, signerEmails, user);
+            log.info("Signers assigned successfully to document {} - count: {}", id, signerEmails.size());
+            return ResponseEntity.ok(DocumentResponse.from(document));
+        } catch (Exception e) {
+            log.error("Error assigning signers to document {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
      * 검토자 제거
      */
     @DeleteMapping("/{id}/remove-reviewer")

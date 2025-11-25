@@ -378,18 +378,76 @@ public class DocumentService {
         // 서명자에게 알림 생성
         createDocumentAssignmentNotification(signer, document, DocumentRole.TaskRole.SIGNER);
 
-        // 메일 전송 (서명자용)
-        mailService.sendAssignReviewerNotification(MailRequest.ReviewerAssignmentEmailCommand.builder()
-                        .documentId(document.getId())
-                        .documentTitle(document.getTitle())
-                        .editorName(assignedBy.getName())
-                        .reviewerEmail(signerEmail)
-                        .reviewerName(signer.getName())
-                        .reviewDueDate(document.getDeadline() != null ? document.getDeadline().atZone(java.time.ZoneId.systemDefault()) : null)
-                .build());
-
-        // 서명자 지정만 하고 상태는 유지 (서명 필드 배치 후 completeSignerAssignment로 SIGNING으로 변경)
+        // 서명자 지정만 하고 상태는 유지 (서명 필드 배치 후 상태가 SIGNING이 될 때 메일 전송)
         documentRepository.save(document);
+        
+        return document;
+    }
+
+    /**
+     * 서명자 일괄 지정
+     */
+    public Document assignSignersBatch(Long documentId, List<String> signerEmails, User assignedBy) {
+        log.info("서명자 일괄 할당 요청 - 문서 ID: {}, 서명자 수: {}, 요청자: {}", 
+                documentId, signerEmails.size(), assignedBy.getId());
+
+        Document document = documentRepository.findById(documentId)
+                .orElseThrow(() -> new RuntimeException("Document not found"));
+        
+        // 서명자 할당 권한 확인
+        boolean isCreator = isCreator(document, assignedBy);
+        boolean isEditor = isEditor(document, assignedBy);
+        
+        if (!isCreator && !isEditor) {
+            throw new RuntimeException("서명자를 할당할 권한이 없습니다. 생성자 또는 편집자만 가능합니다.");
+        }
+
+        // 모든 서명자 할당
+        int successCount = 0;
+        for (String signerEmail : signerEmails) {
+            try {
+                User signer = getUserOrCreate(signerEmail, "Signer User");
+                
+                // 이미 동일한 서명자가 있는지 확인
+                boolean isAlreadyAssigned = documentRoleRepository.findAllByDocumentIdAndTaskRole(
+                        documentId, DocumentRole.TaskRole.SIGNER)
+                        .stream()
+                        .anyMatch(role -> role.getAssignedUserId().equals(signer.getId()));
+                
+                if (isAlreadyAssigned) {
+                    log.warn("이미 지정된 서명자 건너뜀 - 문서 ID: {}, 서명자: {}", documentId, signerEmail);
+                    continue;
+                }
+                
+                // 새로운 서명자 역할 할당
+                DocumentRole signerRole = DocumentRole.builder()
+                        .document(document)
+                        .assignedUserId(signer.getId())
+                        .taskRole(DocumentRole.TaskRole.SIGNER)
+                        .build();
+                
+                documentRoleRepository.save(signerRole);
+                
+                // 서명자에게 알림 생성
+                createDocumentAssignmentNotification(signer, document, DocumentRole.TaskRole.SIGNER);
+                
+                successCount++;
+                log.info("서명자 할당 성공 - 문서 ID: {}, 서명자: {}", documentId, signerEmail);
+            } catch (Exception e) {
+                log.error("서명자 할당 실패 - 문서 ID: {}, 서명자: {}, 오류: {}", 
+                        documentId, signerEmail, e.getMessage());
+                // 개별 실패는 로그만 남기고 계속 진행
+            }
+        }
+
+        if (successCount == 0) {
+            throw new RuntimeException("서명자 할당에 모두 실패했습니다.");
+        }
+
+        documentRepository.save(document);
+        
+        log.info("서명자 일괄 할당 완료 - 문서 ID: {}, 성공: {}/{}", 
+                documentId, successCount, signerEmails.size());
         
         return document;
     }
@@ -507,6 +565,9 @@ public class DocumentService {
             
             changeDocumentStatus(document, Document.DocumentStatus.SIGNING, user, "검토 단계 건너뛰기 - 서명 단계로 이동");
             log.info("검토 단계 건너뛰기 - 문서 ID: {}, READY_FOR_REVIEW -> SIGNING", documentId);
+            
+            // 모든 서명자에게 메일 발송
+            sendSignerNotifications(document, user);
         } else {
             // 검토자가 지정되어 있는지 확인
             boolean hasReviewer = documentRoleRepository.existsByDocumentIdAndTaskRole(
@@ -797,6 +858,9 @@ public class DocumentService {
             // 서명자가 지정되어 있으면 바로 SIGNING 상태로 변경
             changeDocumentStatus(document, Document.DocumentStatus.SIGNING, user, "검토 승인 완료 - 서명 단계로 자동 이동");
             log.info("검토 승인 후 자동으로 서명 단계로 이동 - 문서 ID: {}", documentId);
+            
+            // 모든 서명자에게 메일 발송
+            sendSignerNotifications(document, user);
         } else {
             // 서명자가 없으면 REVIEWING 상태 유지 (편집자가 서명자 지정 후 completeSignerAssignment 호출 필요)
             log.info("검토 승인 완료 - 서명자 지정 대기 중 - 문서 ID: {}", documentId);
@@ -1364,5 +1428,53 @@ public class DocumentService {
             default:
                 return "'" + documentTitle + "' 문서에 새로운 역할이 할당되었습니다.";
         }
+    }
+    
+    /**
+     * 모든 서명자에게 서명 요청 메일 발송
+     */
+    private void sendSignerNotifications(Document document, User requestedBy) {
+        log.info("서명자 메일 발송 시작 - 문서 ID: {}", document.getId());
+        
+        // 모든 서명자 조회
+        List<DocumentRole> signerRoles = documentRoleRepository.findAllByDocumentIdAndTaskRole(
+                document.getId(), DocumentRole.TaskRole.SIGNER);
+        
+        if (signerRoles.isEmpty()) {
+            log.warn("서명자가 없습니다 - 문서 ID: {}", document.getId());
+            return;
+        }
+        
+        // 각 서명자에게 메일 발송
+        for (DocumentRole signerRole : signerRoles) {
+            try {
+                Optional<User> signerOpt = userRepository.findById(signerRole.getAssignedUserId());
+                if (signerOpt.isPresent()) {
+                    User signer = signerOpt.get();
+                    
+                    mailService.sendAssignReviewerNotification(MailRequest.ReviewerAssignmentEmailCommand.builder()
+                            .documentId(document.getId())
+                            .documentTitle(document.getTitle())
+                            .editorName(requestedBy.getName())
+                            .reviewerEmail(signer.getEmail())
+                            .reviewerName(signer.getName())
+                            .reviewDueDate(document.getDeadline() != null ? 
+                                    document.getDeadline().atZone(java.time.ZoneId.systemDefault()) : null)
+                            .build());
+                    
+                    log.info("서명자에게 메일 발송 완료 - 서명자: {}, 문서 ID: {}", 
+                            signer.getEmail(), document.getId());
+                } else {
+                    log.warn("서명자를 찾을 수 없습니다 - 사용자 ID: {}", signerRole.getAssignedUserId());
+                }
+            } catch (Exception e) {
+                log.error("서명자에게 메일 발송 실패 - 역할 ID: {}, 문서 ID: {}", 
+                        signerRole.getId(), document.getId(), e);
+                // 메일 발송 실패는 전체 프로세스를 중단시키지 않음
+            }
+        }
+        
+        log.info("서명자 메일 발송 완료 - 문서 ID: {}, 발송 대상: {}명", 
+                document.getId(), signerRoles.size());
     }
 } 
