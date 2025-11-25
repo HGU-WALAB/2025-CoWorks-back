@@ -385,6 +385,74 @@ public class DocumentService {
     }
 
     /**
+     * 서명자 일괄 지정
+     */
+    public Document assignSignersBatch(Long documentId, List<String> signerEmails, User assignedBy) {
+        log.info("서명자 일괄 할당 요청 - 문서 ID: {}, 서명자 수: {}, 요청자: {}", 
+                documentId, signerEmails.size(), assignedBy.getId());
+
+        Document document = documentRepository.findById(documentId)
+                .orElseThrow(() -> new RuntimeException("Document not found"));
+        
+        // 서명자 할당 권한 확인
+        boolean isCreator = isCreator(document, assignedBy);
+        boolean isEditor = isEditor(document, assignedBy);
+        
+        if (!isCreator && !isEditor) {
+            throw new RuntimeException("서명자를 할당할 권한이 없습니다. 생성자 또는 편집자만 가능합니다.");
+        }
+
+        // 모든 서명자 할당
+        int successCount = 0;
+        for (String signerEmail : signerEmails) {
+            try {
+                User signer = getUserOrCreate(signerEmail, "Signer User");
+                
+                // 이미 동일한 서명자가 있는지 확인
+                boolean isAlreadyAssigned = documentRoleRepository.findAllByDocumentIdAndTaskRole(
+                        documentId, DocumentRole.TaskRole.SIGNER)
+                        .stream()
+                        .anyMatch(role -> role.getAssignedUserId().equals(signer.getId()));
+                
+                if (isAlreadyAssigned) {
+                    log.warn("이미 지정된 서명자 건너뜀 - 문서 ID: {}, 서명자: {}", documentId, signerEmail);
+                    continue;
+                }
+                
+                // 새로운 서명자 역할 할당
+                DocumentRole signerRole = DocumentRole.builder()
+                        .document(document)
+                        .assignedUserId(signer.getId())
+                        .taskRole(DocumentRole.TaskRole.SIGNER)
+                        .build();
+                
+                documentRoleRepository.save(signerRole);
+                
+                // 서명자에게 알림 생성
+                createDocumentAssignmentNotification(signer, document, DocumentRole.TaskRole.SIGNER);
+                
+                successCount++;
+                log.info("서명자 할당 성공 - 문서 ID: {}, 서명자: {}", documentId, signerEmail);
+            } catch (Exception e) {
+                log.error("서명자 할당 실패 - 문서 ID: {}, 서명자: {}, 오류: {}", 
+                        documentId, signerEmail, e.getMessage());
+                // 개별 실패는 로그만 남기고 계속 진행
+            }
+        }
+
+        if (successCount == 0) {
+            throw new RuntimeException("서명자 할당에 모두 실패했습니다.");
+        }
+
+        documentRepository.save(document);
+        
+        log.info("서명자 일괄 할당 완료 - 문서 ID: {}, 성공: {}/{}", 
+                documentId, successCount, signerEmails.size());
+        
+        return document;
+    }
+
+    /**
      * 검토자 제거
      */
     public Document removeReviewer(Long documentId, String reviewerEmail, User removedBy) {
