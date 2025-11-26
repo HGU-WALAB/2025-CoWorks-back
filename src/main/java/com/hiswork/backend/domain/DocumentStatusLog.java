@@ -40,4 +40,8 @@ public class DocumentStatusLog {
     private String changedByName;
     
     private String comment; // 상태 변경 사유나 코멘트
+    
+    @Column(name = "reject_log")
+    @Builder.Default
+    private Boolean rejectLog = false; // 반려 여부 (true: 반려, false: 일반 상태 변경)
 }

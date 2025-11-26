@@ -1337,18 +1337,22 @@ public class DocumentService {
      * 문서 상태 변경을 로그에 기록
      */
     private void logStatusChange(Document document, Document.DocumentStatus newStatus, User changedBy, String comment) {
+        // 반려(REJECTED) 상태인지 확인
+        boolean isRejection = newStatus == Document.DocumentStatus.REJECTED;
+        
         DocumentStatusLog statusLog = DocumentStatusLog.builder()
                 .document(document)
                 .status(newStatus)
                 .changedByEmail(changedBy != null ? changedBy.getEmail() : null)
                 .changedByName(changedBy != null ? changedBy.getName() : null)
                 .comment(comment)
+                .rejectLog(isRejection) // 반려인 경우 true, 아니면 false
                 .build();
         
         documentStatusLogRepository.save(statusLog);
-        log.info("문서 상태 변경 로그 생성 - 문서ID: {}, 상태: {} -> {}, 변경자: {}", 
+        log.info("문서 상태 변경 로그 생성 - 문서ID: {}, 상태: {} -> {}, 변경자: {}, 반려여부: {}", 
                 document.getId(), document.getStatus(), newStatus, 
-                changedBy != null ? changedBy.getEmail() : "시스템");
+                changedBy != null ? changedBy.getEmail() : "시스템", isRejection);
     }
     
     /**
