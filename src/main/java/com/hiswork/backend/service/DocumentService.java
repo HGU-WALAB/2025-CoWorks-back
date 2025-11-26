@@ -894,6 +894,13 @@ public class DocumentService {
         document.setIsRejected(true);
         document = documentRepository.save(document);
         
+        // 서명자 역할 삭제 (검토 반려 시 서명자 지정 취소)
+        List<DocumentRole> signerRoles = documentRoleRepository.findAllByDocumentIdAndTaskRole(documentId, DocumentRole.TaskRole.SIGNER);
+        if (!signerRoles.isEmpty()) {
+            documentRoleRepository.deleteAll(signerRoles);
+            log.info("검토 반려로 인해 서명자 {} 명 삭제됨 - 문서 ID: {}", signerRoles.size(), documentId);
+        }
+        
         // 편집자의 lastViewedAt을 null로 초기화하여 NEW 상태로 만들기
         final Document finalDocument = document;
         final User[] editorHolder = new User[1];
@@ -1106,6 +1113,13 @@ public class DocumentService {
         changeDocumentStatus(document, Document.DocumentStatus.EDITING, user, reason != null ? reason : "문서 반려");
         document.setIsRejected(true);
         document = documentRepository.save(document);
+
+        // 서명자 역할 삭제 (서명 반려 시 모든 서명자 지정 취소)
+        List<DocumentRole> signerRoles = documentRoleRepository.findAllByDocumentIdAndTaskRole(documentId, DocumentRole.TaskRole.SIGNER);
+        if (!signerRoles.isEmpty()) {
+            documentRoleRepository.deleteAll(signerRoles);
+            log.info("서명 반려로 인해 서명자 {} 명 삭제됨 - 문서 ID: {}", signerRoles.size(), documentId);
+        }
 
         // 편집자의 lastViewedAt을 null로 초기화하여 NEW 상태로 만들기
         final Document finalDocument = document;
