@@ -236,4 +236,34 @@ public class MailService {
             throw new RuntimeException("TA 보고 메일 전송 실패", e);
         }
     }
+
+    /**
+     * 관리자가 작업자에게 메시지 전송
+     * @param command
+     */
+    @Async
+    public void sendAdminMessageToWorker(MailRequest.AdminMessageEmailCommand command) {
+        try {
+            Context ctx = new Context();
+            ctx.setVariable("recipientName", command.getRecipientName());
+            ctx.setVariable("senderName", command.getSenderName());
+            ctx.setVariable("message", command.getMessage());
+            ctx.setVariable("documentTitle", command.getDocumentTitle());
+            ctx.setVariable("documentLink", command.getDocumentId() != null 
+                ? linkDomain + "documents/" + command.getDocumentId() 
+                : linkDomain + "tasks/");
+
+            String html = templateEngine.process("admin_message_notification", ctx);
+
+            MimeMessage mime = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mime, true, StandardCharsets.UTF_8.name());
+            helper.setTo(command.getRecipientEmail());
+            helper.setSubject("[CoWorks] 관리자로부터 메시지가 도착했습니다.");
+            helper.setText(html, true);
+
+            mailSender.send(mime);
+        } catch (Exception e) {
+            throw new RuntimeException("관리자 메시지 메일 전송 실패", e);
+        }
+    }
 }

@@ -72,4 +72,17 @@ public class MailRequest {
         String rejectionReason;
         ZonedDateTime dueDate;
     }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class AdminMessageEmailCommand {
+        String recipientEmail;
+        String recipientName;
+        String senderName;
+        String message;
+        String documentTitle;
+        Long documentId;
+    }
 }

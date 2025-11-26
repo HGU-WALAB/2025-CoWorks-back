@@ -1,16 +1,19 @@
 package com.hiswork.backend.controller;
 
 import com.hiswork.backend.domain.Document;
+import com.hiswork.backend.domain.Position;
 import com.hiswork.backend.domain.User;
 import com.hiswork.backend.dto.BulkCommitRequest;
 import com.hiswork.backend.dto.BulkCommitResponse;
 import com.hiswork.backend.dto.DocumentCreateRequest;
 import com.hiswork.backend.dto.DocumentResponse;
 import com.hiswork.backend.dto.DocumentUpdateRequest;
+import com.hiswork.backend.dto.MailRequest;
 import com.hiswork.backend.repository.UserRepository;
 import com.hiswork.backend.service.BulkDocumentService;
 import com.hiswork.backend.service.DocumentService;
 import com.hiswork.backend.service.ExcelParsingService;
+import com.hiswork.backend.service.MailService;
 import com.hiswork.backend.service.PdfService;
 import com.hiswork.backend.util.AuthUtil;
 import jakarta.servlet.http.HttpServletRequest;
@@ -48,6 +51,7 @@ public class DocumentController {
     private final PdfService pdfService;
     private final ExcelParsingService excelParsingService;
     private final BulkDocumentService bulkDocumentService;
+    private final MailService mailService;
 
     @PostMapping
     public ResponseEntity<?> createDocument(
@@ -740,6 +744,82 @@ public class DocumentController {
             log.error("문서 조회 표시 실패 - DocumentId: {}", id, e);
             return ResponseEntity.badRequest()
                     .body(Map.of("error", "문서 조회 표시 실패: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 관리자가 작업자에게 메일 전송 API
+     */
+    @PostMapping("/{id}/send-message")
+    public ResponseEntity<?> sendMessageToWorker(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> request,
+            HttpServletRequest httpRequest) {
+
+        log.info("관리자 메시지 전송 요청 - DocumentId: {}, RecipientEmail: {}", 
+                id, request.get("recipientEmail"));
+
+        try {
+            User currentUser = getCurrentUser(httpRequest);
+            
+            log.info("현재 사용자 정보 - ID: {}, 이메일: {}, Position: {}", 
+                    currentUser.getId(), 
+                    currentUser.getEmail(), 
+                    currentUser.getPosition());
+            
+            // 관리자 권한 체크 - position이 교직원인 경우
+            boolean isAdmin = currentUser.getPosition() == Position.교직원;
+            
+            log.info("관리자 여부 체크: isAdmin={}", isAdmin);
+            
+            if (!isAdmin) {
+                log.warn("권한 없음 - Position: {}", currentUser.getPosition());
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("error", "관리자만 메시지를 전송할 수 있습니다."));
+            }
+
+            // 문서 정보 가져오기
+            Document document = documentService.getDocumentById(id)
+                    .orElseThrow(() -> new RuntimeException("문서를 찾을 수 없습니다."));
+
+            String recipientEmail = request.get("recipientEmail");
+            String message = request.get("message");
+
+            if (recipientEmail == null || recipientEmail.trim().isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "받는 사람 이메일이 필요합니다."));
+            }
+
+            if (message == null || message.trim().isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "메시지 내용이 필요합니다."));
+            }
+
+            // 받는 사람 정보 찾기
+            User recipient = userRepository.findByEmail(recipientEmail)
+                    .orElseThrow(() -> new RuntimeException("받는 사람을 찾을 수 없습니다."));
+
+            // 메일 전송
+            MailRequest.AdminMessageEmailCommand mailCommand = MailRequest.AdminMessageEmailCommand.builder()
+                    .recipientEmail(recipient.getEmail())
+                    .recipientName(recipient.getName())
+                    .senderName(currentUser.getName())
+                    .message(message)
+                    .documentTitle(document.getTitle() != null ? document.getTitle() : document.getTemplate().getName())
+                    .documentId(document.getId())
+                    .build();
+
+            mailService.sendAdminMessageToWorker(mailCommand);
+
+            log.info("관리자 메시지 전송 성공 - From: {}, To: {}", currentUser.getEmail(), recipientEmail);
+
+            return ResponseEntity.ok()
+                    .body(Map.of("success", true, "message", "메시지가 성공적으로 전송되었습니다."));
+
+        } catch (Exception e) {
+            log.error("관리자 메시지 전송 실패 - DocumentId: {}", id, e);
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "메시지 전송 실패: " + e.getMessage()));
         }
     }
 } 
