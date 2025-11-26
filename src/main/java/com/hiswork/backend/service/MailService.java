@@ -87,13 +87,13 @@ public class MailService {
             MimeMessage mime = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(mime, true, StandardCharsets.UTF_8.name());
             helper.setTo(command.getReviewerEmail());
-            helper.setSubject("[CoWorks] " + command.getDocumentTitle() + " 문서의 검토자로 지정되었음을 알려드립니다.");
+            helper.setSubject("[CoWorks] '" + command.getDocumentTitle() + "' 문서의 서명자로 지정되었음을 알려드립니다.");
             helper.setText(html, true);
 
 //            helper.addInline("logoImage", new ClassPathResource("static/images/hiswork-logo.png"));
             mailSender.send(mime);
         } catch (Exception e) {
-            throw new RuntimeException("검토자 할당 메일 전송 실패", e);
+            throw new RuntimeException("서명자 할당 메일 전송 실패", e);
         }
     }
 
