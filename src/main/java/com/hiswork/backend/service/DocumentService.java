@@ -678,6 +678,11 @@ public class DocumentService {
     
     @Transactional(readOnly = true)
     public List<Document> getDocumentsByUser(User user) {
+        // 교직원은 모든 문서 조회 가능
+        if ("교직원".equals(user.getPosition())) {
+            return documentRepository.findAll();
+        }
+        // 일반 사용자는 자신에게 할당된 문서만 조회
         return documentRepository.findDocumentsByUserIdWithStatusLogs(user.getId());
     }
     
@@ -889,10 +894,20 @@ public class DocumentService {
             throw new RuntimeException("문서가 검토 상태가 아닙니다");
         }
         
-        // 상태를 EDITING으로 변경
-        changeDocumentStatus(document, Document.DocumentStatus.EDITING, user, reason != null ? reason : "검토 반려");
+        // 먼저 REJECTED 상태를 로그에 기록
+        logStatusChange(document, Document.DocumentStatus.REJECTED, user, reason != null ? reason : "검토 반려");
+        
+        // 그 다음 상태를 EDITING으로 변경
+        document.setStatus(Document.DocumentStatus.EDITING);
         document.setIsRejected(true);
         document = documentRepository.save(document);
+        
+        // 서명자 역할 삭제 (검토 반려 시 서명자 지정 취소)
+        List<DocumentRole> signerRoles = documentRoleRepository.findAllByDocumentIdAndTaskRole(documentId, DocumentRole.TaskRole.SIGNER);
+        if (!signerRoles.isEmpty()) {
+            documentRoleRepository.deleteAll(signerRoles);
+            log.info("검토 반려로 인해 서명자 {} 명 삭제됨 - 문서 ID: {}", signerRoles.size(), documentId);
+        }
         
         // 편집자의 lastViewedAt을 null로 초기화하여 NEW 상태로 만들기
         final Document finalDocument = document;
@@ -1102,10 +1117,20 @@ public class DocumentService {
             throw new RuntimeException("문서가 서명 대기 상태가 아닙니다");
         }
         
-        // 상태를 Editing 변경
-        changeDocumentStatus(document, Document.DocumentStatus.EDITING, user, reason != null ? reason : "문서 반려");
+        // 먼저 REJECTED 상태를 로그에 기록
+        logStatusChange(document, Document.DocumentStatus.REJECTED, user, reason != null ? reason : "문서 반려");
+        
+        // 그 다음 상태를 Editing 변경
+        document.setStatus(Document.DocumentStatus.EDITING);
         document.setIsRejected(true);
         document = documentRepository.save(document);
+
+        // 서명자 역할 삭제 (서명 반려 시 모든 서명자 지정 취소)
+        List<DocumentRole> signerRoles = documentRoleRepository.findAllByDocumentIdAndTaskRole(documentId, DocumentRole.TaskRole.SIGNER);
+        if (!signerRoles.isEmpty()) {
+            documentRoleRepository.deleteAll(signerRoles);
+            log.info("서명 반려로 인해 서명자 {} 명 삭제됨 - 문서 ID: {}", signerRoles.size(), documentId);
+        }
 
         // 편집자의 lastViewedAt을 null로 초기화하여 NEW 상태로 만들기
         final Document finalDocument = document;
