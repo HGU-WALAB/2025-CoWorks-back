@@ -50,6 +50,10 @@ app:
   file:
     upload-dir: ./uploads
     pdf-templates-dir: ./uploads/pdf-templates
+  frontend:
+    url: ${FRONTEND_URL:http://localhost:5173}
+  signing-token:
+    expiry-days: 3
 
 jwt:
   secret_key: ${JWT_SECRET_KEY}

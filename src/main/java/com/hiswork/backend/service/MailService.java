@@ -266,4 +266,36 @@ public class MailService {
             throw new RuntimeException("관리자 메시지 메일 전송 실패", e);
         }
     }
+    
+    /**
+     * 서명 요청 이메일 전송 (익명 사용자용 - 토큰 포함)
+     */
+    @Async
+    public void sendSigningRequestEmail(
+        String signerEmail, 
+        String signerName, 
+        String documentTitle, 
+        String signingUrl,
+        java.time.LocalDateTime expiresAt
+    ) {
+        try {
+            Context ctx = new Context();
+            ctx.setVariable("signerName", signerName);
+            ctx.setVariable("documentTitle", documentTitle);
+            ctx.setVariable("signingUrl", signingUrl);
+            ctx.setVariable("expiresAt", fmt.format(expiresAt));
+
+            String html = templateEngine.process("signing_request_email", ctx);
+
+            MimeMessage mime = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mime, true, StandardCharsets.UTF_8.name());
+            helper.setTo(signerEmail);
+            helper.setSubject("[CoWorks] '" + documentTitle + "' 문서의 서명이 요청되었습니다.");
+            helper.setText(html, true);
+
+            mailSender.send(mime);
+        } catch (Exception e) {
+            throw new RuntimeException("서명 요청 메일 전송 실패", e);
+        }
+    }
 }
