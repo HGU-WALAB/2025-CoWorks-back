@@ -46,8 +46,14 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/**").permitAll()  // 인증 관련 엔드포인트 허용
+                        .requestMatchers("/public/**").permitAll()  // 공개 API (익명 서명)
                         .requestMatchers("/**").permitAll()
                         .anyRequest().permitAll()  // 개발 환경에서는 모든 요청 허용
+                )
+                // 익명 사용자 설정
+                .anonymous(anonymous -> anonymous
+                        .authorities("ROLE_ANONYMOUS_SIGNER")
+                        .principal("anonymousUser")
                 )
                 .httpBasic(httpBasic -> httpBasic.disable())
                 .formLogin(formLogin -> formLogin.disable());
@@ -62,8 +68,14 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()  // 인증 관련 엔드포인트 허용
+                        .requestMatchers("/api/public/**").permitAll()  // 공개 API (익명 서명)
                         .requestMatchers("/api/templates").hasRole("USER")
                         .anyRequest().authenticated()
+                )
+                // 익명 사용자 설정
+                .anonymous(anonymous -> anonymous
+                        .authorities("ROLE_ANONYMOUS_SIGNER")
+                        .principal("anonymousUser")
                 )
                 .oauth2Login(oauth2 -> oauth2
                         .defaultSuccessUrl("/", true)
