@@ -52,6 +52,7 @@ public class DocumentService {
     private final ObjectMapper objectMapper;
     private final PasswordEncoder passwordEncoder;
     private final NotificationService notificationService;
+    private final SigningTokenService signingTokenService;
 
     public Document createDocument(Long templateId, User creator, String editorEmail, String title, LocalDateTime deadline) {
         Template template = templateRepository.findById(templateId)
@@ -1462,10 +1463,10 @@ public class DocumentService {
     }
     
     /**
-     * 모든 서명자에게 서명 요청 메일 발송
+     * 모든 서명자에게 서명 요청 메일 발송 (토큰 기반)
      */
     private void sendSignerNotifications(Document document, User requestedBy) {
-        log.info("서명자 메일 발송 시작 - 문서 ID: {}", document.getId());
+        log.info("서명자 토큰 기반 메일 발송 시작 - 문서 ID: {}", document.getId());
         
         // 모든 서명자 조회
         List<DocumentRole> signerRoles = documentRoleRepository.findAllByDocumentIdAndTaskRole(
@@ -1476,36 +1477,64 @@ public class DocumentService {
             return;
         }
         
-        // 각 서명자에게 메일 발송
+        String documentTitle = document.getTitle() != null ? document.getTitle() : document.getTemplate().getName();
+        
+        // 각 서명자에게 토큰 생성 및 메일 발송
         for (DocumentRole signerRole : signerRoles) {
             try {
                 Optional<User> signerOpt = userRepository.findById(signerRole.getAssignedUserId());
                 if (signerOpt.isPresent()) {
                     User signer = signerOpt.get();
                     
-                    mailService.sendAssignReviewerNotification(MailRequest.ReviewerAssignmentEmailCommand.builder()
-                            .documentId(document.getId())
-                            .documentTitle(document.getTitle())
-                            .editorName(requestedBy.getName())
-                            .reviewerEmail(signer.getEmail())
-                            .reviewerName(signer.getName())
-                            .reviewDueDate(document.getDeadline() != null ? 
-                                    document.getDeadline().atZone(java.time.ZoneId.systemDefault()) : null)
-                            .build());
+                    // 서명 토큰 생성 및 이메일 발송
+                    signingTokenService.createAndSendToken(
+                        document.getId(),
+                        signer.getEmail(),
+                        signer.getName(),
+                        documentTitle
+                    );
                     
-                    log.info("서명자에게 메일 발송 완료 - 서명자: {}, 문서 ID: {}", 
+                    log.info("서명자에게 토큰 기반 메일 발송 완료 - 서명자: {}, 문서 ID: {}", 
                             signer.getEmail(), document.getId());
                 } else {
                     log.warn("서명자를 찾을 수 없습니다 - 사용자 ID: {}", signerRole.getAssignedUserId());
                 }
             } catch (Exception e) {
-                log.error("서명자에게 메일 발송 실패 - 역할 ID: {}, 문서 ID: {}", 
+                log.error("서명자에게 토큰 기반 메일 발송 실패 - 역할 ID: {}, 문서 ID: {}", 
                         signerRole.getId(), document.getId(), e);
                 // 메일 발송 실패는 전체 프로세스를 중단시키지 않음
             }
         }
         
-        log.info("서명자 메일 발송 완료 - 문서 ID: {}, 발송 대상: {}명", 
+        log.info("서명자 토큰 기반 메일 발송 완료 - 문서 ID: {}, 발송 대상: {}명", 
                 document.getId(), signerRoles.size());
+    }
+    
+    /**
+     * 이메일 기반 서명 승인 (익명 사용자용)
+     */
+    public Document approveDocumentByEmail(Long documentId, String signerEmail, String signatureData) {
+        log.info("이메일 기반 서명 승인 - 문서 ID: {}, 서명자: {}", documentId, signerEmail);
+        
+        // 이메일로 사용자 찾기
+        User user = userRepository.findByEmail(signerEmail)
+            .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다: " + signerEmail));
+        
+        // 기존 approveDocument 메서드 호출
+        return approveDocument(documentId, user, signatureData);
+    }
+    
+    /**
+     * 이메일 기반 서명 반려 (익명 사용자용)
+     */
+    public Document rejectDocumentByEmail(Long documentId, String signerEmail, String reason) {
+        log.info("이메일 기반 서명 반려 - 문서 ID: {}, 서명자: {}", documentId, signerEmail);
+        
+        // 이메일로 사용자 찾기
+        User user = userRepository.findByEmail(signerEmail)
+            .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다: " + signerEmail));
+        
+        // 기존 rejectDocument 메서드 호출
+        return rejectDocument(documentId, user, reason);
     }
 } 
