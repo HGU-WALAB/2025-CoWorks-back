@@ -1508,4 +1508,133 @@ public class DocumentService {
         log.info("서명자 메일 발송 완료 - 문서 ID: {}, 발송 대상: {}명", 
                 document.getId(), signerRoles.size());
     }
+    
+    /**
+     * 특정 템플릿 ID로 문서 조회 (현재 사용자가 EDITOR인 문서만)
+     * - 서명자 이름과 서명자 서명 데이터는 제외
+     */
+    @Transactional(readOnly = true)
+    public List<DocumentResponse> getDocumentsByTemplateId(Long templateId, User user) {
+        log.info("템플릿 ID로 문서 조회 - 템플릿 ID: {}, 사용자: {}", templateId, user.getId());
+        
+        List<Document> documents = documentRepository.findByTemplateIdAndEditorUserId(templateId, user.getId());
+        
+        log.info("조회된 문서 수: {}", documents.size());
+        
+        return documents.stream()
+                .map(document -> {
+                    // DocumentResponse 생성
+                    DocumentResponse response = getDocumentResponseForTemplate(document);
+                    return response;
+                })
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * 템플릿 기반 문서 조회용 DocumentResponse 생성 (서명 정보 제외)
+     */
+    private DocumentResponse getDocumentResponseForTemplate(Document document) {
+        // TaskInfo 생성 시 실제 사용자 정보 포함
+        List<DocumentResponse.TaskInfo> taskInfos = document.getDocumentRoles().stream()
+                .map(role -> {
+                    String userEmail = null;
+                    String userName = null;
+                    
+                    // assignedUserId가 있으면 실제 사용자 정보 조회
+                    if (role.getAssignedUserId() != null) {
+                        Optional<User> userOpt = userRepository.findById(role.getAssignedUserId());
+                        if (userOpt.isPresent()) {
+                            User assignedUser = userOpt.get();
+                            userEmail = assignedUser.getEmail();
+                            userName = assignedUser.getName();
+                        }
+                    } else {
+                        // 임시 사용자 정보 사용
+                        userEmail = role.getPendingEmail();
+                        userName = role.getPendingName();
+                    }
+                    
+                    return DocumentResponse.TaskInfo.builder()
+                            .id(role.getId())
+                            .role(role.getTaskRole().name())
+                            .assignedUserName(userName)
+                            .assignedUserEmail(userEmail)
+                            .lastViewedAt(role.getLastViewedAt())
+                            .createdAt(role.getCreatedAt())
+                            .updatedAt(role.getUpdatedAt())
+                            .isNew(role.isNew())
+                            .build();
+                })
+                .collect(Collectors.toList());
+        
+        // 서명 데이터 제외한 문서 data 생성
+        JsonNode sanitizedData = sanitizeDocumentData(document.getData());
+        
+        return DocumentResponse.builder()
+                .id(document.getId())
+                .templateId(document.getTemplate().getId())
+                .templateName(document.getTemplate().getName())
+                .title(document.getTitle())
+                .data(sanitizedData)
+                .status(document.getStatus().name())
+                .createdAt(document.getCreatedAt())
+                .updatedAt(document.getUpdatedAt())
+                .deadline(document.getDeadline())
+                .isRejected(document.getIsRejected() != null ? document.getIsRejected() : false)
+                .tasks(taskInfos)
+                .folderId(document.getFolder() != null ? document.getFolder().getId().toString() : null)
+                .folderName(document.getFolder() != null ? document.getFolder().getName() : null)
+                .build();
+    }
+    
+    /**
+     * 문서 데이터에서 서명자 이름, 서명자 서명 데이터 제외
+     */
+    private JsonNode sanitizeDocumentData(JsonNode data) {
+        if (data == null) {
+            return null;
+        }
+        
+        try {
+            ObjectNode sanitizedData = data.deepCopy();
+            
+            // coordinateFields 처리
+            if (sanitizedData.has("coordinateFields") && sanitizedData.get("coordinateFields").isArray()) {
+                ArrayNode coordinateFields = (ArrayNode) sanitizedData.get("coordinateFields");
+                ArrayNode sanitizedFields = objectMapper.createArrayNode();
+                
+                for (JsonNode field : coordinateFields) {
+                    ObjectNode fieldCopy = field.deepCopy();
+                    String fieldType = fieldCopy.has("type") ? fieldCopy.get("type").asText() : "";
+                    
+                    // signer_signature 또는 reviewer_signature 타입의 value (서명 데이터) 제거
+                    if ("signer_signature".equals(fieldType) || "reviewer_signature".equals(fieldType)) {
+                        fieldCopy.put("value", ""); // 서명 데이터 초기화
+                        // 서명자 이름 필드도 제거
+                        if (fieldCopy.has("signerEmail")) {
+                            fieldCopy.remove("signerEmail");
+                        }
+                        if (fieldCopy.has("signerName")) {
+                            fieldCopy.remove("signerName");
+                        }
+                        if (fieldCopy.has("reviewerEmail")) {
+                            fieldCopy.remove("reviewerEmail");
+                        }
+                        if (fieldCopy.has("reviewerName")) {
+                            fieldCopy.remove("reviewerName");
+                        }
+                    }
+                    
+                    sanitizedFields.add(fieldCopy);
+                }
+                
+                sanitizedData.set("coordinateFields", sanitizedFields);
+            }
+            
+            return sanitizedData;
+        } catch (Exception e) {
+            log.warn("문서 데이터 정제 중 오류: {}", e.getMessage());
+            return data; // 오류 시 원본 반환
+        }
+    }
 } 
