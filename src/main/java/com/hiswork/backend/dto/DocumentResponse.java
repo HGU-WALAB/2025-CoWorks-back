@@ -33,6 +33,10 @@ public class DocumentResponse {
     // Template 정보 추가
     private TemplateInfo template;
     
+    // 폴더 정보 추가
+    private String folderId;
+    private String folderName;
+    
     public static DocumentResponse from(Document document) {
         List<TaskInfo> taskInfos = document.getDocumentRoles().stream()
                 .map(TaskInfo::from)
@@ -58,6 +62,8 @@ public class DocumentResponse {
                 .tasks(taskInfos)
                 .statusLogs(statusLogResponses)
                 .template(templateInfo)
+                .folderId(document.getFolder() != null ? document.getFolder().getId().toString() : null)
+                .folderName(document.getFolder() != null ? document.getFolder().getName() : null)
                 .build();
     }
     
