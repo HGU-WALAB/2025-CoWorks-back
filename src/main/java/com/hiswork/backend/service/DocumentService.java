@@ -680,7 +680,7 @@ public class DocumentService {
     public List<Document> getDocumentsByUser(User user) {
         // 교직원은 모든 문서 조회 가능
         if ("교직원".equals(user.getPosition())) {
-            return documentRepository.findAll();
+            return documentRepository.findAllWithFolder();
         }
         // 일반 사용자는 자신에게 할당된 문서만 조회
         return documentRepository.findDocumentsByUserIdWithStatusLogs(user.getId());
@@ -758,6 +758,8 @@ public class DocumentService {
                 .tasks(taskInfos)
                 .statusLogs(statusLogResponses)
                 .template(templateInfo)
+                .folderId(document.getFolder() != null ? document.getFolder().getId().toString() : null)
+                .folderName(document.getFolder() != null ? document.getFolder().getName() : null)
                 .build();
     }
     

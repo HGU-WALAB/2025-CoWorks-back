@@ -13,12 +13,18 @@ import java.util.Optional;
 @Repository
 public interface DocumentRepository extends JpaRepository<Document, Long> {
     
-    @Query("SELECT d FROM Document d JOIN d.documentRoles dr WHERE " +
+    /**
+     * 모든 문서를 폴더 정보와 함께 조회 (교직원용)
+     */
+    @Query("SELECT d FROM Document d LEFT JOIN FETCH d.folder ORDER BY d.createdAt DESC")
+    List<Document> findAllWithFolder();
+    
+    @Query("SELECT d FROM Document d LEFT JOIN FETCH d.folder JOIN d.documentRoles dr WHERE " +
            "dr.assignedUserId = :userId " +
            "ORDER BY d.createdAt DESC")
     List<Document> findDocumentsByUserId(@Param("userId") String userId);
     
-    @Query("SELECT d FROM Document d JOIN d.documentRoles dr, com.hiswork.backend.domain.User u WHERE " +
+    @Query("SELECT d FROM Document d LEFT JOIN FETCH d.folder JOIN d.documentRoles dr, com.hiswork.backend.domain.User u WHERE " +
            "(u.id = dr.assignedUserId AND u.email = :email) OR " +
            "(dr.pendingEmail = :email) " +
            "ORDER BY d.createdAt DESC")
@@ -52,13 +58,14 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
     /**
      * statusLogs를 함께 조회하는 메서드
      */
-    @Query("SELECT d FROM Document d LEFT JOIN FETCH d.statusLogs sl WHERE d.id = :id ORDER BY sl.timestamp ASC")
+    @Query("SELECT d FROM Document d LEFT JOIN FETCH d.folder LEFT JOIN FETCH d.statusLogs sl WHERE d.id = :id ORDER BY sl.timestamp ASC")
     Optional<Document> findByIdWithStatusLogs(@Param("id") Long id);
     
     /**
      * 사용자의 문서들을 statusLogs와 함께 조회
      */
     @Query("SELECT DISTINCT d FROM Document d " +
+           "LEFT JOIN FETCH d.folder " +
            "LEFT JOIN FETCH d.statusLogs sl " +
            "JOIN d.documentRoles dr WHERE " +
            "dr.assignedUserId = :userId " +
@@ -72,6 +79,7 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
      */
     
     @Query("SELECT d FROM Document d " +
+           "LEFT JOIN FETCH d.folder " +
            "JOIN d.documentRoles dr WHERE " +
            "dr.assignedUserId = :userId " +
            "AND d.status <> com.hiswork.backend.domain.Document$DocumentStatus.COMPLETED " +
