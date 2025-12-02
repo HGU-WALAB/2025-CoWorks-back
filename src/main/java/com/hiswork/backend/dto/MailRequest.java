@@ -85,4 +85,16 @@ public class MailRequest {
         String documentTitle;
         Long documentId;
     }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class DeadlineReminderEmailCommand {
+        Long documentId;
+        String documentTitle;
+        String editorEmail;
+        String editorName;
+        ZonedDateTime deadline;
+    }
 }

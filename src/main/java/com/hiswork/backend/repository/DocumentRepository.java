@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -100,4 +101,14 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
            "AND dr.taskRole = com.hiswork.backend.domain.DocumentRole$TaskRole.EDITOR " +
            "ORDER BY d.updatedAt DESC")
     List<Document> findByTemplateIdAndEditorUserId(@Param("templateId") Long templateId, @Param("userId") String userId);
+    
+    /**
+     * 특정 상태이고 마감일이 특정 범위 내에 있는 문서 조회
+     * (마감일 알림을 위한 메서드)
+     */
+    List<Document> findByStatusAndDeadlineBetween(
+        Document.DocumentStatus status,
+        LocalDateTime startDateTime,
+        LocalDateTime endDateTime
+    );
 } 
