@@ -298,4 +298,30 @@ public class MailService {
             throw new RuntimeException("서명 요청 메일 전송 실패", e);
         }
     }
+
+    /**
+     * 마감일 임박 알림 메일 전송 (작성 중인 문서 대상)
+     */
+    @Async
+    public void sendDeadlineReminderNotification(MailRequest.DeadlineReminderEmailCommand command) {
+        try {
+            Context ctx = new Context();
+            ctx.setVariable("documentTitle", command.getDocumentTitle());
+            ctx.setVariable("actionLink", linkDomain + "documents/" + command.getDocumentId() + "/edit");
+            ctx.setVariable("editorName", command.getEditorName());
+            ctx.setVariable("deadline", command.getDeadline() != null ? fmt.format(command.getDeadline()) : null);
+
+            String html = templateEngine.process("deadline_reminder_notification", ctx);
+
+            MimeMessage mime = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mime, true, StandardCharsets.UTF_8.name());
+            helper.setTo(command.getEditorEmail());
+            helper.setSubject("[CoWorks] '" + command.getDocumentTitle() + "' 문서의 마감일이 내일입니다.");
+            helper.setText(html, true);
+
+            mailSender.send(mime);
+        } catch (Exception e) {
+            throw new RuntimeException("마감일 알림 메일 전송 실패", e);
+        }
+    }
 }
