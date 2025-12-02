@@ -1,114 +1,93 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
 <head>
-    <meta charset="UTF-8" />
-    <title>[Coworks] 서명 요청 알림</title>
-    <meta http-equiv="x-ua-compatible" content="ie=edge">
-    <meta name="x-apple-disable-message-reformatting">
-    <meta name="format-detection" content="telephone=no,address=no,email=no,date=no,url=no">
-    <meta name="color-scheme" content="light only">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>서명 요청 알림</title>
 </head>
-<body style="margin:0;padding:0;background-color:#f8f9fa;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
-<!-- 프리헤더 -->
-<div style="display:none;max-height:0;overflow:hidden;opacity:0;">
-    <span th:text="${editorName}">편집자</span>님이 <span th:text="${documentTitle}">문서</span>의 서명자로 당신을 지정했습니다.
-</div>
-
-<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;background-color:#f8f9fa;">
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f5f5f5;">
+<table role="presentation" style="width: 100%; border-collapse: collapse;">
     <tr>
-        <td align="center" style="padding:24px;">
-            <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="600" style="width:600px;max-width:600px;background:#ffffff;border-radius:15px;border:1px solid #e5e7eb;">
+        <td align="center" style="padding: 40px 0;">
+            <table role="presentation" style="width: 600px; border-collapse: collapse; background-color: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <!-- 헤더 -->
                 <tr>
-                    <td style="padding:32px 24px 8px 24px;">
-                        <h2 style="margin:0 0 16px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:24px;line-height:1.3;font-weight:700;color:#2563eb;border-bottom:2px solid #e5e7eb;padding-bottom:8px;">
-                            서명 요청 알림
-                        </h2>
+                    <td style="padding: 30px; background: linear-gradient(135deg, #5789c9 0%, #3b82f6 100%);">
+                        <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 600;">CoWorks</h1>
+                    </td>
+                </tr>
 
-                        <p style="margin:0 0 16px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:16px;line-height:1.6;color:#1f2937;">
-                            <strong th:text="${editorName}" style="color:#111827;">편집자</strong> 님이
-                            <span th:text="${documentTitle}" style="font-weight:600;">문서 제목</span>의
-                            <span style="display:inline-block;margin-left:4px;padding:2px 8px;border-radius:4px;border:1px solid #dbeafe; background:#eff6ff; color:#2563eb;font-weight:700;">서명자</span>
-                            로 <strong th:text="${reviewerName}" style="color:#111827;">귀하</strong>를 지정했습니다.
+                <!-- 본문 -->
+                <tr>
+                    <td style="padding: 40px 30px;">
+                        <p style="margin: 0 0 20px 0; font-size: 16px; color: #333; line-height: 1.6;">
+                            <span th:text="${reviewerName}">검토자</span>님, 안녕하세요!
                         </p>
 
-                        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;background:#f9fafb;border-left:4px solid #2563eb;border-radius:6px;margin:16px 0;">
+                        <p style="margin: 0 0 25px 0; font-size: 16px; color: #333; line-height: 1.6;">
+                            <strong style="color: #3b82f6;" th:text="${editorName}">편집자</strong>님이
+                            <strong style="color: #3b82f6; font-size: 18px;" th:text="${documentTitle}">문서 제목</strong> 문서의
+                            <strong style="color: #3b82f6;">검토자</strong>로 귀하를 지정했습니다.
+                        </p>
+
+                        <div style="background-color: #f8f9fa; border-left: 4px solid #3b82f6; padding: 15px; margin: 25px 0;">
+                            <p style="margin: 0; color: #555; font-size: 14px; line-height: 1.6;">
+                                ℹ️ 문서를 확인하고 코멘트 또는 승인/수정 요청을 남겨 주세요.
+                            </p>
+                        </div>
+
+                        <!-- 검토 범위 (조건부) -->
+                        <div th:if="${reviewScope != null}" style="margin: 25px 0; padding: 15px; background-color: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+                            <p style="margin: 0; color: #856404; font-size: 14px; line-height: 1.6;">
+                                <strong>검토 범위:</strong> <span th:text="${reviewScope}">형식/내용/법적 검토 등</span>
+                            </p>
+                        </div>
+
+                        <!-- 링크 복사용 -->
+                        <div style="margin: 25px 0; padding: 15px; background-color: #f8f9fa; border-radius: 8px;">
+                            <p style="margin: 0 0 10px 0; font-size: 12px; color: #666; font-weight: 600;">
+                                버튼이 작동하지 않는 경우, 아래 링크를 복사하여 브라우저에 붙여넣으세요:
+                            </p>
+                            <p style="margin: 0; font-size: 12px; color: #3b82f6; word-break: break-all;">
+                                <span th:text="${actionLink}">https://example.com/review</span>
+                            </p>
+                        </div>
+
+                        <!-- CTA 버튼 -->
+                        <table role="presentation" style="margin: 30px 0; width: 100%;">
                             <tr>
-                                <td style="padding:16px;">
-                                    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.6;color:#374151;">
-                                        문서를 확인하고 코멘트 또는 승인/수정 요청을 남겨 주세요.
-                                          <span th:if="${reviewScope != null}">
-                                            <br><span style="font-weight:600;color:#111827;">서명 범위:</span>
-                                            <span th:text="${reviewScope}">형식/내용/법적 서명 등</span>
-                                          </span>
-                                        </div>
+                                <td align="center">
+                                    <a th:href="${actionLink}"
+                                       style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, #5789c9 0%, #3b82f6 100%); color: #ffffff; text-decoration: none; border-radius: 50px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 15px rgba(96, 165, 250, 0.4);">
+                                        ✍️ 검토 시작하기
+                                    </a>
                                 </td>
                             </tr>
                         </table>
+
+                        <!-- 추가 정보 -->
+                        <div style="margin: 25px 0; padding: 15px; background-color: #f8f9fa; border-radius: 8px;">
+                            <p style="margin: 0 0 8px 0; font-size: 14px; color: #555; line-height: 1.6;">
+                                📋 <strong>문서:</strong> <span th:text="${documentTitle}">문서 제목</span>
+                            </p>
+                            <p th:if="${reviewDueDateStr != null}" style="margin: 0 0 8px 0; font-size: 14px; color: #c2410c; line-height: 1.6;">
+                                ⏰ <strong>검토 마감:</strong> <span th:text="${reviewDueDateStr}">YYYY-MM-DD HH:mm</span>
+                            </p>
+                            <p style="margin: 0; font-size: 14px; color: #555; line-height: 1.6;">
+                                👤 <strong>지정자:</strong> <span th:text="${editorName}">편집자</span>
+                            </p>
+                        </div>
                     </td>
                 </tr>
 
-                <!-- 요약 정보 -->
+                <!-- 푸터 -->
                 <tr>
-                    <td style="padding:8px 24px 0 24px;">
-                        <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:8px;">
-                            <tr>
-                                <td style="padding:16px;border-bottom:1px solid #e5e7eb;">
-                                    <h3 style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:18px;font-weight:700;color:#1f2937;">요약 정보</h3>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td style="padding:12px 16px;">
-                                    <p style="margin:0 0 8px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.7;color:#374151;">
-                                        문서: <strong th:text="${documentTitle}">문서 제목</strong>
-                                    </p>
-                                    <p th:if="${reviewDueDateStr != null}" style="margin:0 0 8px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.7;color:#c2410c;">
-                                        서명 마감: <strong th:text="${reviewDueDateStr}">YYYY-MM-DD HH:mm</strong>
-                                    </p>
-                                    <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.7;color:#374151;">
-                                        지정자: <span th:text="${editorName}">편집자</span>
-                                    </p>
-                                </td>
-                            </tr>
-                        </table>
-                    </td>
-                </tr>
-
-                <!-- 도움말 -->
-                <tr>
-                    <td style="padding:16px 24px 0 24px;">
-                        <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:8px;">
-                            <tr>
-                                <td style="padding:16px;border-bottom:1px solid #e5e7eb;">
-                                    <h3 style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:18px;font-weight:700;color:#1f2937;">도움이 필요하신가요?</h3>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td style="padding:16px;">
-                                    <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.6;color:#6b7280;">
-                                        문의는 <a href="mailto:hgucoworks@gmail.com" style="color:#2563eb;text-decoration:none;font-weight:600;">Coworks 지원팀</a>에 남겨주세요.
-                                    </p>
-                                </td>
-                            </tr>
-                        </table>
-                    </td>
-                </tr>
-
-                <tr>
-                    <table role="presentation" border="0" cellpadding="0" cellspacing="0" align="center" style="margin:24px auto 8px auto;">
-                        <tr>
-                            <td align="center" bgcolor="#2563eb" style="border-radius:8px;">
-                                <a th:href="${actionLink}" style="display:inline-block;padding:14px 28px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:16px;line-height:1.2;color:#ffffff;text-decoration:none;font-weight:600;border-radius:8px;background-color:#2563eb;">
-                                    서명 시작하기
-                                </a>
-                            </td>
-                        </tr>
-                    </table>
-                </tr>
-
-                <tr>
-                    <td style="padding:24px 24px 28px 24px;">
-                        <p style="margin:0;text-align:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.6;color:#6b7280;">
-                            이 이메일은 Coworks 시스템에서 발송되었습니다.
+                    <td style="padding: 30px; background-color: #f8f9fa; border-top: 1px solid #dee2e6;">
+                        <p style="margin: 0 0 10px 0; font-size: 12px; color: #6c757d; text-align: center;">
+                            본 메일은 자동 발송되었습니다.
+                        </p>
+                        <p style="margin: 0; font-size: 12px; color: #6c757d; text-align: center;">
+                            © 2025 WALAB CoWorks. All rights reserved.
                         </p>
                     </td>
                 </tr>
