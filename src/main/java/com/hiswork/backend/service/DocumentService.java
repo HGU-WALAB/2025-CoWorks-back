@@ -8,6 +8,8 @@ import com.hiswork.backend.domain.Document;
 import com.hiswork.backend.domain.DocumentRole;
 import com.hiswork.backend.domain.DocumentStatusLog;
 import com.hiswork.backend.domain.NotificationType;
+import com.hiswork.backend.domain.Position;
+import com.hiswork.backend.domain.Role;
 import com.hiswork.backend.domain.Template;
 import com.hiswork.backend.domain.User;
 import com.hiswork.backend.dto.DocumentResponse;
@@ -19,22 +21,19 @@ import com.hiswork.backend.repository.DocumentRoleRepository;
 import com.hiswork.backend.repository.DocumentStatusLogRepository;
 import com.hiswork.backend.repository.TemplateRepository;
 import com.hiswork.backend.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
-import com.hiswork.backend.domain.Position;
-import com.hiswork.backend.domain.Role;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.ArrayList;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -315,14 +314,14 @@ public class DocumentService {
         // 검토자에게 알림 생성
         createDocumentAssignmentNotification(reviewer, document, DocumentRole.TaskRole.REVIEWER);
 
-        mailService.sendAssignReviewerNotification(MailRequest.ReviewerAssignmentEmailCommand.builder()
-                        .documentId(document.getId())
-                        .documentTitle(document.getTitle())
-                        .editorName(assignedBy.getName())
-                        .reviewerEmail(reviewerEmail)
-                        .reviewerName(reviewer.getName())
-                        .reviewDueDate(document.getDeadline() != null ? document.getDeadline().atZone(java.time.ZoneId.systemDefault()) : null)
-                .build());
+//        mailService.sendAssignReviewerNotification(MailRequest.ReviewerAssignmentEmailCommand.builder()
+//                        .documentId(document.getId())
+//                        .documentTitle(document.getTitle())
+//                        .editorName(assignedBy.getName())
+//                        .reviewerEmail(reviewerEmail)
+//                        .reviewerName(reviewer.getName())
+//                        .reviewDueDate(document.getDeadline() != null ? document.getDeadline().atZone(java.time.ZoneId.systemDefault()) : null)
+//                .build());
 
         // 검토자 지정만 하고 상태는 READY_FOR_REVIEW 유지
         documentRepository.save(document);
@@ -647,22 +646,22 @@ public class DocumentService {
             createDocumentAssignmentNotification(templateCreator, document, DocumentRole.TaskRole.REVIEWER);
             
             // 템플릿 생성자에게 이메일 발송
-            try {
-                mailService.sendAssignReviewerNotification(MailRequest.ReviewerAssignmentEmailCommand.builder()
-                        .documentId(document.getId())
-                        .documentTitle(document.getTitle())
-                        .editorName(user.getName())
-                        .reviewerEmail(templateCreator.getEmail())
-                        .reviewerName(templateCreator.getName())
-                        .reviewDueDate(document.getDeadline() != null ? 
-                                document.getDeadline().atZone(java.time.ZoneId.systemDefault()) : null)
-                        .build());
-                
-                log.info("템플릿 생성자에게 검토 알림 이메일 발송 완료 - 수신자: {}", templateCreator.getEmail());
-            } catch (Exception e) {
-                log.error("템플릿 생성자에게 검토 알림 이메일 발송 실패: {}", e.getMessage(), e);
-                // 이메일 발송 실패는 전체 프로세스를 중단시키지 않음
-            }
+//            try {
+//                mailService.sendAssignReviewerNotification(MailRequest.ReviewerAssignmentEmailCommand.builder()
+//                        .documentId(document.getId())
+//                        .documentTitle(document.getTitle())
+//                        .editorName(user.getName())
+//                        .reviewerEmail(templateCreator.getEmail())
+//                        .reviewerName(templateCreator.getName())
+//                        .reviewDueDate(document.getDeadline() != null ?
+//                                document.getDeadline().atZone(java.time.ZoneId.systemDefault()) : null)
+//                        .build());
+//
+//                log.info("템플릿 생성자에게 검토 알림 이메일 발송 완료 - 수신자: {}", templateCreator.getEmail());
+//            } catch (Exception e) {
+//                log.error("템플릿 생성자에게 검토 알림 이메일 발송 실패: {}", e.getMessage(), e);
+//                // 이메일 발송 실패는 전체 프로세스를 중단시키지 않음
+//            }
         } else {
             log.info("템플릿 생성자가 이미 검토자로 지정되어 있음 - 문서 ID: {}, 검토자: {}", 
                     documentId, templateCreator.getEmail());
